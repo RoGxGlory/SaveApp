@@ -67,7 +67,7 @@ public class Game
     }
 
     // Sauvegarde chiffrée de la partie via l'API
-    public static async Task SaveEncryptedAsync(Game game, string username, string password, Account currentAccount, List<Account> allAccounts)
+    public static async Task SaveEncryptedAsync(Game game, string username, string password, Account? currentAccount = null, List<Account>? allAccounts = null)
     {
         string json = JsonSerializer.Serialize(game);
         byte[] plaintext = Encoding.UTF8.GetBytes(json);

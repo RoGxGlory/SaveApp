@@ -96,6 +96,15 @@ class Program
             }
             // Chargement de la sauvegarde chiffrée du jeu pour l'utilisateur connecté
             Game game = await Game.LoadEncryptedAsync(username, userPassword);
+            // Ensure account score from server is authoritative to avoid overwriting higher server value
+            if (currentAccount != null)
+            {
+                // If the saved game has a lower score (stale), keep server score and align game
+                if (game.Score < currentAccount.Score)
+                    game.Score = currentAccount.Score;
+                else
+                    currentAccount.Score = Math.Max(currentAccount.Score, game.Score);
+            }
             bool running = true;
             bool inGame = false;
 
@@ -184,7 +193,12 @@ class Program
                                 if (!game.InProgress)
                                 {
                                     // Synchronisation immédiate du score du compte après victoire
-                                    await ApiClient.SaveAccountAsync(currentAccount.Username, game.Score);
+                                    // Merge local session score with account to avoid downgrading server score
+                                    if (currentAccount != null)
+                                    {
+                                        currentAccount.Score = Math.Max(currentAccount.Score, game.Score);
+                                        await ApiClient.SaveAccountAsync(currentAccount.Username, currentAccount.Score);
+                                    }
                                     Console.WriteLine("Partie terminée. Retour au menu principal.\n");
                                     inGame = false;
                                 }
