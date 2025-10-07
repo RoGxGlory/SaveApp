@@ -17,7 +17,6 @@ public class Account
     public int Score { get; set; } = 0;
     public DateTime ScoreDateUtc { get; set; } = DateTime.UtcNow;
     public string ScoreSignature { get; set; } = default!;
-    private const string ServerSecretKey = "SuperSecretKeyChangeMe!"; // TODO: Move to config/env
 
     // Constructeur par défaut
     public Account() { }
@@ -47,6 +46,19 @@ public class Account
         collection.DeleteMany(Builders<Account>.Filter.Empty);
         if (accounts.Count > 0)
             collection.InsertMany(accounts);
+    }
+
+    // HMAC key for public deployment
+    private static string? _cachedSecretKey = null;
+
+    // Get the server secret key from environment variable
+    public static string GetServerSecretKey()
+    {
+        if (_cachedSecretKey == null)
+        {
+            _cachedSecretKey = Environment.GetEnvironmentVariable("SERVER_SECRET_KEY") ?? "default_fallback_key";
+        }
+        return _cachedSecretKey;
     }
 
     // Génère la signature HMAC du score

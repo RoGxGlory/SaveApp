@@ -15,7 +15,7 @@ namespace SaveApp
         // Initialisation de la connexion et création des collections
         public static async Task InitializeAsync()
         {
-            // Use a secure, limited-access connection string for Atlas
+            // Hardcoded connection string for public deployment || minimal access role with only listCollections and readWrite permsissions || not for production use
             string connectionString = "mongodb+srv://GameUser:7bdvHOhpUkdsEg3Z@mydatacluster.rppw4sk.mongodb.net/game?retryWrites=true&w=majority";
             Client = new MongoClient(connectionString);
             Database = Client.GetDatabase("game");

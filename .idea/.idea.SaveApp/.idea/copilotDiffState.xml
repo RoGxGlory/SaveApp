@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CopilotDiffPersistence">
+    <option name="pendingDiffs">
+      <map>
+        <entry key="$PROJECT_DIR$/Dockerfile">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/Dockerfile" />
+              <option name="originalContent" value="# Use the official .NET SDK image to build the app&#10;FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build&#10;WORKDIR /app&#10;&#10;# Copy solution and project files&#10;COPY SaveApp.sln ./&#10;COPY SaveApp/*.csproj ./SaveApp/&#10;&#10;# Restore dependencies&#10;RUN dotnet restore&#10;&#10;# Copy the rest of the source code&#10;COPY SaveApp/. ./SaveApp/&#10;&#10;# Build and publish the app&#10;WORKDIR /app/SaveApp&#10;RUN dotnet publish -c Release -o out&#10;&#10;# Build runtime image&#10;FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime&#10;WORKDIR /app&#10;COPY --from=build /app/SaveApp/out ./&#10;ENV ASPNETCORE_URLS=http://+:8080&#10;EXPOSE 8080&#10;ENTRYPOINT [&quot;dotnet&quot;, &quot;SaveApp.dll&quot;]&#10;" />
+              <option name="updatedContent" value="# Use the official .NET SDK image to build the app&#10;FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build&#10;WORKDIR /app&#10;&#10;# Copy solution and project files&#10;COPY SaveApp.sln ./&#10;COPY SaveApp/*.csproj ./SaveApp/&#10;&#10;# Restore dependencies&#10;RUN dotnet restore&#10;&#10;# Copy the rest of the source code&#10;COPY SaveApp/. ./SaveApp/&#10;&#10;# Build and publish the app&#10;WORKDIR /app/SaveApp&#10;RUN dotnet publish -c Release -o out&#10;&#10;# Build runtime image&#10;FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime&#10;WORKDIR /app&#10;COPY --from=build /app/SaveApp/out ./&#10;ENV ASPNETCORE_URLS=http://+:8080&#10;EXPOSE 8080&#10;ENTRYPOINT [&quot;dotnet&quot;, &quot;SaveApp.dll&quot;]&#10;" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>

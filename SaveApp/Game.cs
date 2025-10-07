@@ -93,7 +93,7 @@ public class Game
             currentAccount.Score = game.Score;
             currentAccount.ScoreDateUtc = DateTime.UtcNow;
             // Mise à jour de la signature d'intégrité du score
-            currentAccount.ScoreSignature = Account.GenerateScoreSignature(currentAccount.Score, typeof(Account).GetField("ServerSecretKey", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)?.GetValue(null)?.ToString() ?? "SuperSecretKeyChangeMe!");
+            currentAccount.ScoreSignature = Account.GenerateScoreSignature(currentAccount.Score, Account.GetServerSecretKey());
             Account.SaveAccounts(allAccounts);
         }
     }

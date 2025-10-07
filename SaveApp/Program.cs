@@ -43,7 +43,7 @@ class Program
     }
 
     // Helper to get the server secret key
-    static string GetServerSecretKey() => typeof(Account).GetField("ServerSecretKey", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)?.GetValue(null)?.ToString() ?? "SuperSecretKeyChangeMe!";
+    static string GetServerSecretKey() => Account.GetServerSecretKey();
 
     // Point d'entrée principal du programme
     static async Task Main()
