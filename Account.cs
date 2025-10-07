@@ -3,8 +3,9 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Driver;
+using SaveApp;
 
-namespace SaveApp.SaveApp;
+namespace SaveApp;
 
 public class Account
 {
@@ -14,10 +15,11 @@ public class Account
     public string Username { get; set; } = default!;
     public string PasswordHashB64 { get; set; } = default!;
     public string SaltB64 { get; set; } = default!;
-    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
-    public int Score { get; set; } = 0;
-    public DateTime ScoreDateUtc { get; set; } = DateTime.UtcNow;
-    public string ScoreSignature { get; set; } = default!;
+    public DateTime CreatedUtc { get; set; }
+    public int Score { get; set; }
+    public DateTime ScoreDateUtc { get; set; }
+    public string ScoreSignature { get; set; } = string.Empty;
+    public string Integrity { get; set; } = string.Empty;
 
     // Constructeur par défaut
     public Account() { }
@@ -33,20 +35,16 @@ public class Account
         ScoreDateUtc = DateTime.UtcNow;
     }
 
-    // Charge tous les comptes depuis MongoDB
-    public static List<Account> LoadAccounts()
+    // Load all accounts from the API
+    public static async Task<List<Account>> LoadAccountsAsync()
     {
-        var collection = MongoService.Database.GetCollection<Account>("accounts");
-        return collection.Find(Builders<Account>.Filter.Empty).ToList();
+        return await ApiClient.GetAccountsAsync();
     }
 
-    // Sauvegarde la liste des comptes dans MongoDB (remplace tout)
-    public static void SaveAccounts(List<Account> accounts)
+    // Save all accounts via the API
+    public static async Task SaveAccountsAsync(List<Account> accounts)
     {
-        var collection = MongoService.Database.GetCollection<Account>("accounts");
-        collection.DeleteMany(Builders<Account>.Filter.Empty);
-        if (accounts.Count > 0)
-            collection.InsertMany(accounts);
+        await ApiClient.SaveAccountsAsync(accounts);
     }
 
     // HMAC key for public deployment

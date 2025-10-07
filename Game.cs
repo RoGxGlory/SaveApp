@@ -3,22 +3,22 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
-using MongoDB.Driver;
+using System.Text.Json.Serialization;
 
-namespace SaveApp.SaveApp;
+namespace SaveApp;
 
 public class SaveData
 {
-    [BsonId]
-    [BsonIgnoreIfDefault]
-    public ObjectId Id { get; set; } // Ignoré si ObjectId.Empty
-    public string Username { get; set; }
-    public string Salt { get; set; }
-    public string Nonce { get; set; }
-    public string Tag { get; set; }
-    public string Data { get; set; }
+    [JsonPropertyName("username")]
+    public string Username { get; set; } = string.Empty;
+    [JsonPropertyName("salt")]
+    public string Salt { get; set; } = string.Empty;
+    [JsonPropertyName("nonce")]
+    public string Nonce { get; set; } = string.Empty;
+    [JsonPropertyName("tag")]
+    public string Tag { get; set; } = string.Empty;
+    [JsonPropertyName("data")]
+    public string Data { get; set; } = string.Empty;
 }
 
 public class Game
@@ -66,8 +66,8 @@ public class Game
         return $"Bravo ! Vous avez trouvé en {Attempts} essais.\n";
     }
 
-    // Sauvegarde chiffrée de la partie dans MongoDB
-    public static void SaveEncrypted(Game game, string username, string password, Account currentAccount = null, List<Account> allAccounts = null)
+    // Sauvegarde chiffrée de la partie via l'API
+    public static async Task SaveEncryptedAsync(Game game, string username, string password, Account currentAccount, List<Account> allAccounts)
     {
         string json = JsonSerializer.Serialize(game);
         byte[] plaintext = Encoding.UTF8.GetBytes(json);
@@ -86,30 +86,26 @@ public class Game
             Tag = Convert.ToBase64String(tag),
             Data = Convert.ToBase64String(ciphertext)
         };
-        var collection = MongoService.Database.GetCollection<SaveData>("saves");
-        var filter = Builders<SaveData>.Filter.Eq(x => x.Username, username);
-        collection.ReplaceOne(filter, save, new ReplaceOptions { IsUpsert = true });
+        await ApiClient.SaveGameAsync(save);
         // Synchronisation du score du compte
         if (currentAccount != null && allAccounts != null)
         {
             currentAccount.Score = game.Score;
             currentAccount.ScoreDateUtc = DateTime.UtcNow;
-            // Mise à jour de la signature d'intégrité du score
             currentAccount.ScoreSignature = Account.GenerateScoreSignature(currentAccount.Score, Account.GetServerSecretKey());
-            Account.SaveAccounts(allAccounts);
+            await Account.SaveAccountsAsync(allAccounts);
         }
     }
 
-    // Charge une sauvegarde chiffrée depuis MongoDB
-    public static Game LoadEncrypted(string username, string password)
+    // Charge une sauvegarde chiffrée via l'API
+    public static async Task<Game> LoadEncryptedAsync(string username, string password)
     {
-        var collection = MongoService.Database.GetCollection<SaveData>("saves");
-        var filter = Builders<SaveData>.Filter.Eq(x => x.Username, username);
-        var save = collection.Find(filter).FirstOrDefault();
+        var save = await ApiClient.LoadGameAsync(username, password);
         if (save == null)
             return new Game();
         try
         {
+            // Console.WriteLine("Starting decryption for user: " + username);
             byte[] salt = Convert.FromBase64String(save.Salt);
             byte[] nonce = Convert.FromBase64String(save.Nonce);
             byte[] tag = Convert.FromBase64String(save.Tag);
@@ -119,11 +115,14 @@ public class Game
             byte[] plaintext = new byte[ciphertext.Length];
             aes.Decrypt(nonce, ciphertext, tag, plaintext);
             string json = Encoding.UTF8.GetString(plaintext);
-            return JsonSerializer.Deserialize<Game>(json) ?? new Game();
+            // Console.WriteLine("Decryption successful, json = " + json);
+            var deserializedGame = JsonSerializer.Deserialize<Game>(json);
+            // Console.WriteLine("Deserialized game.Score = " + deserializedGame?.Score);
+            return deserializedGame ?? new Game();
         }
-        catch
+        catch (Exception ex)
         {
-            // Si le contenu est corrompu ou le mot de passe incorrect, retourne une nouvelle partie
+            Console.WriteLine("Decryption failed: " + ex.Message);
             return new Game();
         }
     }

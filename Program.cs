@@ -1,6 +1,6 @@
 ﻿// Programme principal du jeu console avec gestion multi-comptes, sauvegarde chiffrée et menu interactif
 
-namespace SaveApp.SaveApp;
+namespace SaveApp;
 
 class Program
 {
@@ -28,36 +28,33 @@ class Program
         Console.Write("Choix : ");
     }
 
-    static void ShowLeaderboard()
+    static async Task ShowLeaderboardAsync()
     {
-        var accounts = Account.LoadAccounts();
+        var accounts = await ApiClient.GetLeaderboardAsync();
         Console.WriteLine("\n=== LEADERBOARD ===");
         Console.WriteLine($"{"Utilisateur",-18} | {"Score",5} | {"Date du score",-19} | {"Intégrité",-9}");
         Console.WriteLine(new string('-', 18) + " | " + new string('-', 5) + " | " + new string('-', 19) + " | " + new string('-', 9));
         foreach (var acc in accounts.OrderByDescending(a => a.Score))
         {
-            bool valid = Account.VerifyScoreSignature(acc.Score, acc.ScoreSignature, GetServerSecretKey());
-            string integrity = valid ? "OK" : "TAMPERED";
-            Console.WriteLine($"{acc.Username,-18} | {acc.Score,5} | {acc.ScoreDateUtc:yyyy-MM-dd HH:mm:ss} | {integrity,-9}");
+            if (DateTime.TryParse(acc.ScoreDateUtc, out var date))
+            {
+                string integrity = string.IsNullOrEmpty(acc.Integrity) ? "UNKNOWN" : acc.Integrity;
+                Console.WriteLine($"{acc.Username,-18} | {acc.Score,5} | {date:yyyy-MM-dd HH:mm:ss} | {integrity,-9}");
+            }
+            else
+            {
+                string integrity = string.IsNullOrEmpty(acc.Integrity) ? "UNKNOWN" : acc.Integrity;
+                Console.WriteLine($"{acc.Username,-18} | {acc.Score,5} | {acc.ScoreDateUtc,-19} | {integrity,-9}");
+            }
         }
         Console.WriteLine();
     }
-
-    // Helper to get the server secret key
-    static string GetServerSecretKey() => Account.GetServerSecretKey();
-
+    
     // Point d'entrée principal du programme
     static async Task Main()
     {
-        // Initialisation de la connexion MongoDB et des collections
-        await MongoService.InitializeAsync();
-        // Migration des anciens comptes MongoDB
-        global::SaveApp.SaveApp.AccountMigration.MigrateAccountsCollection();
-
-        while (true) // Boucle générale pour permettre la reconnexion après déconnexion
+        while (true)
         {
-            // Chargement de la liste des comptes existants
-            List<Account> accounts = Account.LoadAccounts();
             string username;
             Account? currentAccount = null;
             string userPassword = null;
@@ -66,51 +63,39 @@ class Program
             {
                 Console.Write("Entrez votre nom d'utilisateur : ");
                 username = Console.ReadLine() ?? "Invité";
-                currentAccount = accounts.Find(a => a.Username == username);
-                if (currentAccount != null)
+                Console.Write("Mot de passe : ");
+                string password = ReadPassword();
+                var loginResult = await ApiClient.LoginAsync(username, password);
+                if (loginResult.Success)
                 {
-                    // Authentification par mot de passe
-                    Console.Write("Mot de passe : ");
-                    string password = ReadPassword();
-                    if (PasswordService.VerifyPassword(password, currentAccount.PasswordHashB64, currentAccount.SaltB64))
-                    {
-                        userPassword = password;
-                        Console.WriteLine("Connexion réussie !\n");
-                        // Vérifier et régénérer la signature si manquante
-                        if (string.IsNullOrEmpty(currentAccount.ScoreSignature))
-                        {
-                            currentAccount.ScoreSignature = Account.GenerateScoreSignature(currentAccount.Score, GetServerSecretKey());
-                            Account.SaveAccounts(accounts);
-                        }
-                        break;
-                    }
-                    else
-                    {
-                        Console.WriteLine("Mot de passe incorrect.\n");
-                    }
+                    currentAccount = loginResult.Account;
+                    userPassword = password;
+                    Console.WriteLine("Connexion réussie !\n");
+                    break;
                 }
                 else
                 {
-                    // Création d'un nouveau compte si inexistant
                     Console.WriteLine("Aucun compte trouvé. Voulez-vous en créer un ? (o/n)");
                     string rep = Console.ReadLine()?.ToLower() ?? "n";
                     if (rep == "o" || rep == "oui" || rep == "y")
                     {
-                        Console.Write("Choisissez un mot de passe : ");
-                        string password = ReadPassword();
-                        var (hash, salt) = PasswordService.HashPassword(password);
-                        currentAccount = new Account(username, hash, salt);
-                        currentAccount.ScoreSignature = Account.GenerateScoreSignature(currentAccount.Score, GetServerSecretKey());
-                        accounts.Add(currentAccount);
-                        Account.SaveAccounts(accounts);
-                        userPassword = password;
-                        Console.WriteLine("Compte créé et connecté !\n");
-                        break;
+                        var registerResult = await ApiClient.RegisterAsync(username, password);
+                        if (registerResult.Success)
+                        {
+                            currentAccount = registerResult.Account;
+                            userPassword = password;
+                            Console.WriteLine("Compte créé et connecté !\n");
+                            break;
+                        }
+                        else
+                        {
+                            Console.WriteLine("Erreur lors de la création du compte.\n");
+                        }
                     }
                 }
             }
             // Chargement de la sauvegarde chiffrée du jeu pour l'utilisateur connecté
-            Game game = Game.LoadEncrypted(username, userPassword);
+            Game game = await Game.LoadEncryptedAsync(username, userPassword);
             bool running = true;
             bool inGame = false;
 
@@ -131,7 +116,7 @@ class Program
                             break;
                         case "2":
                             // Charger la partie sauvegardée
-                            game = Game.LoadEncrypted(username, userPassword);
+                            game = await Game.LoadEncryptedAsync(username, userPassword);
                             Console.WriteLine("Partie chargée.\n");
                             if (!game.InProgress)
                             {
@@ -142,12 +127,12 @@ class Program
                             break;
                         case "3":
                             // Sauvegarder la partie en cours (chiffrée)
-                            Game.SaveEncrypted(game, username, userPassword, currentAccount, accounts);
+                            await Game.SaveEncryptedAsync(game, username, userPassword, currentAccount, null);
                             Console.WriteLine("Partie sauvegardée (chiffrée).\n");
                             break;
                         case "4":
                             // Afficher le score et les essais
-                            Console.WriteLine($"Score (parties gagnées) : {game.Score}\n");
+                            Console.WriteLine($"Score (parties gagnées) : {currentAccount.Score}\n");
                             if (game.InProgress)
                                 Console.WriteLine($"Essais dans la partie en cours : {game.Attempts}\n");
                             break;
@@ -155,20 +140,20 @@ class Program
                             // Nouvelle sauvegarde (réinitialisation)
                             game = new Game();
                             game.StartNewGame();
-                            Game.SaveEncrypted(game, username, userPassword, currentAccount, accounts);
+                            await Game.SaveEncryptedAsync(game, username, userPassword, currentAccount, null);
                             Console.WriteLine("Nouvelle sauvegarde créée (chiffrée). Partie réinitialisée ! Devinez un nombre entre 1 et 100.\n");
                             inGame = true;
                             break;
                         case "6":
                             // Quitter l'application
                             running = false;
-                            Game.SaveEncrypted(game, username, userPassword, currentAccount, accounts);
+                            await Game.SaveEncryptedAsync(game, username, userPassword, currentAccount, null);
                             Console.WriteLine("Partie sauvegardée (chiffrée) et application quittée.\n");
                             Environment.Exit(0);
                             break;
                         case "7":
                             // Déconnexion (retour à l'écran de connexion)
-                            Game.SaveEncrypted(game, username, userPassword, currentAccount, accounts);
+                            await Game.SaveEncryptedAsync(game, username, userPassword, currentAccount, null);
                             Console.WriteLine("Déconnexion...\n");
                             running = false; // Sort de la boucle du menu pour revenir à la connexion
                             break;
@@ -199,10 +184,7 @@ class Program
                                 if (!game.InProgress)
                                 {
                                     // Synchronisation immédiate du score du compte après victoire
-                                    currentAccount.Score = game.Score;
-                                    currentAccount.ScoreDateUtc = DateTime.UtcNow;
-                                    currentAccount.ScoreSignature = Account.GenerateScoreSignature(currentAccount.Score, GetServerSecretKey());
-                                    Account.SaveAccounts(accounts);
+                                    await ApiClient.SaveAccountAsync(currentAccount.Username, game.Score);
                                     Console.WriteLine("Partie terminée. Retour au menu principal.\n");
                                     inGame = false;
                                 }
@@ -219,7 +201,7 @@ class Program
                             break;
                         case "3":
                             // Afficher le leaderboard
-                            ShowLeaderboard();
+                            await ShowLeaderboardAsync();
                             break;
                         default:
                             Console.WriteLine("Choix invalide.\n");
