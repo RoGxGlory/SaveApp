@@ -1,53 +1,50 @@
 // Classe représentant un compte utilisateur avec gestion du stockage et de la récupération
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
+using MongoDB.Driver;
+using SaveApp;
 using System;
-using System.IO;
-using System.Text.Json;
 using System.Collections.Generic;
 
 public class Account
 {
-    // Nom d'utilisateur unique
-    public string Username { get; set; }
-    // Hash sécurisé du mot de passe
-    public string PasswordHash { get; set; }
-    // Sel utilisé pour le hash du mot de passe
-    public string PasswordSalt { get; set; }
+    [BsonId]
+    [BsonRepresentation(BsonType.ObjectId)]
+    public string Id { get; set; } = default!;
+    public string Username { get; set; } = default!;
+    public string PasswordHashB64 { get; set; } = default!;
+    public string SaltB64 { get; set; } = default!;
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+    public int Score { get; set; } = 0;
+    public DateTime ScoreDateUtc { get; set; } = DateTime.UtcNow;
 
-    // Nom du fichier où sont stockés tous les comptes
-    public static string AccountsFile => "accounts.json";
-
-    // Constructeur par défaut (utilisé pour la désérialisation JSON)
+    // Constructeur par défaut
     public Account() { }
 
     // Constructeur pour créer un compte avec nom, hash et sel
-    public Account(string username, string hash, string salt)
+    public Account(string username, string hashB64, string saltB64)
     {
         Username = username;
-        PasswordHash = hash;
-        PasswordSalt = salt;
+        PasswordHashB64 = hashB64;
+        SaltB64 = saltB64;
+        CreatedUtc = DateTime.UtcNow;
+        Score = 0;
+        ScoreDateUtc = DateTime.UtcNow;
     }
 
-    // Charge la liste des comptes depuis le fichier JSON
+    // Charge tous les comptes depuis MongoDB
     public static List<Account> LoadAccounts()
     {
-        if (!File.Exists(AccountsFile))
-            return new List<Account>(); // Aucun compte si le fichier n'existe pas
-        try
-        {
-            string json = File.ReadAllText(AccountsFile);
-            return JsonSerializer.Deserialize<List<Account>>(json) ?? new List<Account>();
-        }
-        catch
-        {
-            // Si le fichier est corrompu ou illisible, retourne une liste vide
-            return new List<Account>();
-        }
+        var collection = MongoService.Database.GetCollection<Account>("accounts");
+        return collection.Find(Builders<Account>.Filter.Empty).ToList();
     }
 
-    // Sauvegarde la liste des comptes dans le fichier JSON
+    // Sauvegarde la liste des comptes dans MongoDB (remplace tout)
     public static void SaveAccounts(List<Account> accounts)
     {
-        string json = JsonSerializer.Serialize(accounts);
-        File.WriteAllText(AccountsFile, json);
+        var collection = MongoService.Database.GetCollection<Account>("accounts");
+        collection.DeleteMany(Builders<Account>.Filter.Empty);
+        if (accounts.Count > 0)
+            collection.InsertMany(accounts);
     }
 }

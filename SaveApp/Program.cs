@@ -1,6 +1,11 @@
 ﻿// Programme principal du jeu console avec gestion multi-comptes, sauvegarde chiffrée et menu interactif
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using SaveApp;
+using MongoDB.Driver;
+using MongoDB.Bson;
 
 class Program
 {
@@ -24,12 +29,31 @@ class Program
         Console.WriteLine("\n=== MENU EN JEU ===");
         Console.WriteLine("1. Deviner un nombre");
         Console.WriteLine("2. Retour au menu principal");
+        Console.WriteLine("3. Afficher le leaderboard");
         Console.Write("Choix : ");
     }
 
-    // Point d'entrée principal du programme
-    static void Main()
+    static void ShowLeaderboard()
     {
+        var accounts = Account.LoadAccounts();
+        Console.WriteLine("\n=== LEADERBOARD ===");
+        Console.WriteLine("Utilisateur        | Score | Date du score");
+        Console.WriteLine("-------------------|-------|--------------------------");
+        foreach (var acc in accounts.OrderByDescending(a => a.Score))
+        {
+            Console.WriteLine($"{acc.Username,-19}| {acc.Score,3}   | {acc.ScoreDateUtc:yyyy-MM-dd HH:mm:ss}");
+        }
+        Console.WriteLine();
+    }
+
+    // Point d'entrée principal du programme
+    static async Task Main()
+    {
+        // Initialisation de la connexion MongoDB et des collections
+        await MongoService.InitializeAsync();
+        // Migration des anciens comptes MongoDB
+        SaveApp.AccountMigration.MigrateAccountsCollection();
+
         while (true) // Boucle générale pour permettre la reconnexion après déconnexion
         {
             // Chargement de la liste des comptes existants
@@ -48,7 +72,7 @@ class Program
                     // Authentification par mot de passe
                     Console.Write("Mot de passe : ");
                     string password = ReadPassword();
-                    if (PasswordService.VerifyPassword(password, currentAccount.PasswordHash, currentAccount.PasswordSalt))
+                    if (PasswordService.VerifyPassword(password, currentAccount.PasswordHashB64, currentAccount.SaltB64))
                     {
                         userPassword = password;
                         Console.WriteLine("Connexion réussie !\n");
@@ -111,7 +135,7 @@ class Program
                             break;
                         case "3":
                             // Sauvegarder la partie en cours (chiffrée)
-                            Game.SaveEncrypted(game, username, userPassword);
+                            Game.SaveEncrypted(game, username, userPassword, currentAccount, accounts);
                             Console.WriteLine("Partie sauvegardée (chiffrée).\n");
                             break;
                         case "4":
@@ -124,20 +148,20 @@ class Program
                             // Nouvelle sauvegarde (réinitialisation)
                             game = new Game();
                             game.StartNewGame();
-                            Game.SaveEncrypted(game, username, userPassword);
+                            Game.SaveEncrypted(game, username, userPassword, currentAccount, accounts);
                             Console.WriteLine("Nouvelle sauvegarde créée (chiffrée). Partie réinitialisée ! Devinez un nombre entre 1 et 100.\n");
                             inGame = true;
                             break;
                         case "6":
                             // Quitter l'application
                             running = false;
-                            Game.SaveEncrypted(game, username, userPassword);
+                            Game.SaveEncrypted(game, username, userPassword, currentAccount, accounts);
                             Console.WriteLine("Partie sauvegardée (chiffrée) et application quittée.\n");
                             Environment.Exit(0);
                             break;
                         case "7":
                             // Déconnexion (retour à l'écran de connexion)
-                            Game.SaveEncrypted(game, username, userPassword);
+                            Game.SaveEncrypted(game, username, userPassword, currentAccount, accounts);
                             Console.WriteLine("Déconnexion...\n");
                             running = false; // Sort de la boucle du menu pour revenir à la connexion
                             break;
@@ -167,6 +191,10 @@ class Program
                                 Console.WriteLine(result);
                                 if (!game.InProgress)
                                 {
+                                    // Synchronisation immédiate du score du compte après victoire
+                                    currentAccount.Score = game.Score;
+                                    currentAccount.ScoreDateUtc = DateTime.UtcNow;
+                                    Account.SaveAccounts(accounts);
                                     Console.WriteLine("Partie terminée. Retour au menu principal.\n");
                                     inGame = false;
                                 }
@@ -180,6 +208,10 @@ class Program
                             // Retour au menu principal
                             Console.WriteLine("Retour au menu principal.\n");
                             inGame = false;
+                            break;
+                        case "3":
+                            // Afficher le leaderboard
+                            ShowLeaderboard();
                             break;
                         default:
                             Console.WriteLine("Choix invalide.\n");

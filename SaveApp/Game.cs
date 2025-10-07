@@ -4,6 +4,22 @@ using System.IO;
 using System.Text.Json;
 using System.Security.Cryptography;
 using System.Text;
+using MongoDB.Driver;
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
+using SaveApp;
+
+public class SaveData
+{
+    [BsonId]
+    [BsonIgnoreIfDefault]
+    public ObjectId Id { get; set; } // Ignoré si ObjectId.Empty
+    public string Username { get; set; }
+    public string Salt { get; set; }
+    public string Nonce { get; set; }
+    public string Tag { get; set; }
+    public string Data { get; set; }
+}
 
 public class Game
 {
@@ -50,8 +66,8 @@ public class Game
         return $"Bravo ! Vous avez trouvé en {Attempts} essais.\n";
     }
 
-    // Sauvegarde chiffrée de la partie avec AES-GCM et mot de passe utilisateur
-    public static void SaveEncrypted(Game game, string username, string password)
+    // Sauvegarde chiffrée de la partie dans MongoDB
+    public static void SaveEncrypted(Game game, string username, string password, Account currentAccount = null, List<Account> allAccounts = null)
     {
         string json = JsonSerializer.Serialize(game);
         byte[] plaintext = Encoding.UTF8.GetBytes(json);
@@ -62,32 +78,40 @@ public class Game
         byte[] ciphertext = new byte[plaintext.Length];
         byte[] tag = new byte[16]; // 128 bits
         aes.Encrypt(nonce, plaintext, ciphertext, tag);
-        var payload = new
+        var save = new SaveData
         {
+            Username = username,
             Salt = Convert.ToBase64String(salt),
             Nonce = Convert.ToBase64String(nonce),
             Tag = Convert.ToBase64String(tag),
             Data = Convert.ToBase64String(ciphertext)
         };
-        string encryptedJson = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText($"savegame_{username}.enc", encryptedJson);
+        var collection = MongoService.Database.GetCollection<SaveData>("saves");
+        var filter = Builders<SaveData>.Filter.Eq(x => x.Username, username);
+        collection.ReplaceOne(filter, save, new ReplaceOptions { IsUpsert = true });
+        // Synchronisation du score du compte
+        if (currentAccount != null && allAccounts != null)
+        {
+            currentAccount.Score = game.Score;
+            currentAccount.ScoreDateUtc = DateTime.UtcNow;
+            Account.SaveAccounts(allAccounts);
+        }
     }
 
-    // Charge une sauvegarde chiffrée (AES-GCM) à partir du mot de passe utilisateur
+    // Charge une sauvegarde chiffrée depuis MongoDB
     public static Game LoadEncrypted(string username, string password)
     {
-        string saveFile = $"savegame_{username}.enc";
-        if (!File.Exists(saveFile))
+        var collection = MongoService.Database.GetCollection<SaveData>("saves");
+        var filter = Builders<SaveData>.Filter.Eq(x => x.Username, username);
+        var save = collection.Find(filter).FirstOrDefault();
+        if (save == null)
             return new Game();
         try
         {
-            string encryptedJson = File.ReadAllText(saveFile);
-            using var doc = JsonDocument.Parse(encryptedJson);
-            var root = doc.RootElement;
-            byte[] salt = Convert.FromBase64String(root.GetProperty("Salt").GetString()!);
-            byte[] nonce = Convert.FromBase64String(root.GetProperty("Nonce").GetString()!);
-            byte[] tag = Convert.FromBase64String(root.GetProperty("Tag").GetString()!);
-            byte[] ciphertext = Convert.FromBase64String(root.GetProperty("Data").GetString()!);
+            byte[] salt = Convert.FromBase64String(save.Salt);
+            byte[] nonce = Convert.FromBase64String(save.Nonce);
+            byte[] tag = Convert.FromBase64String(save.Tag);
+            byte[] ciphertext = Convert.FromBase64String(save.Data);
             var key = new Rfc2898DeriveBytes(password, salt, 100_000, HashAlgorithmName.SHA256).GetBytes(32);
             using var aes = new AesGcm(key);
             byte[] plaintext = new byte[ciphertext.Length];
@@ -97,7 +121,7 @@ public class Game
         }
         catch
         {
-            // Si le fichier est corrompu ou le mot de passe incorrect, retourne une nouvelle partie
+            // Si le contenu est corrompu ou le mot de passe incorrect, retourne une nouvelle partie
             return new Game();
         }
     }
