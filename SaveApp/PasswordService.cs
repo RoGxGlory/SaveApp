@@ -1,5 +1,4 @@
 // Service statique pour le hashage et la vérification sécurisée des mots de passe utilisateurs
-using System;
 using System.Security.Cryptography;
 
 public static class PasswordService

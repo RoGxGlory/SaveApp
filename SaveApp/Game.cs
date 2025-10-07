@@ -1,6 +1,4 @@
 // Classe représentant la logique du jeu, la gestion de la partie et la sauvegarde chiffrée
-using System;
-using System.IO;
 using System.Text.Json;
 using System.Security.Cryptography;
 using System.Text;

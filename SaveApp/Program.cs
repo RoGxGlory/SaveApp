@@ -1,11 +1,5 @@
 ﻿// Programme principal du jeu console avec gestion multi-comptes, sauvegarde chiffrée et menu interactif
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using SaveApp;
-using MongoDB.Driver;
-using MongoDB.Bson;
 
 class Program
 {
