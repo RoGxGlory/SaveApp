@@ -15,8 +15,12 @@ namespace SaveApp
         // Initialisation de la connexion et création des collections
         public static async Task InitializeAsync()
         {
-            // Hardcoded connection string for public deployment || minimal access role with only listCollections and readWrite permsissions || not for production use
-            string connectionString = "mongodb+srv://GameUser:7bdvHOhpUkdsEg3Z@mydatacluster.rppw4sk.mongodb.net/game?retryWrites=true&w=majority";
+            // Read connection string from environment variable for security
+            string connectionString = Environment.GetEnvironmentVariable("MONGODB_CONN_STRING") ?? "";
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                throw new InvalidOperationException("MongoDB connection string is missing. Set the MONGODB_CONN_STRING environment variable.");
+            }
             Client = new MongoClient(connectionString);
             Database = Client.GetDatabase("game");
             // Création des collections si elles n'existent pas
