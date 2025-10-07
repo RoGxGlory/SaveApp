@@ -31,14 +31,19 @@ class Program
     {
         var accounts = Account.LoadAccounts();
         Console.WriteLine("\n=== LEADERBOARD ===");
-        Console.WriteLine("Utilisateur        | Score | Date du score");
-        Console.WriteLine("-------------------|-------|--------------------------");
+        Console.WriteLine($"{"Utilisateur",-18} | {"Score",5} | {"Date du score",-19} | {"Intégrité",-9}");
+        Console.WriteLine(new string('-', 18) + " | " + new string('-', 5) + " | " + new string('-', 19) + " | " + new string('-', 9));
         foreach (var acc in accounts.OrderByDescending(a => a.Score))
         {
-            Console.WriteLine($"{acc.Username,-19}| {acc.Score,3}   | {acc.ScoreDateUtc:yyyy-MM-dd HH:mm:ss}");
+            bool valid = Account.VerifyScoreSignature(acc.Score, acc.ScoreSignature, GetServerSecretKey());
+            string integrity = valid ? "OK" : "TAMPERED";
+            Console.WriteLine($"{acc.Username,-18} | {acc.Score,5} | {acc.ScoreDateUtc:yyyy-MM-dd HH:mm:ss} | {integrity,-9}");
         }
         Console.WriteLine();
     }
+
+    // Helper to get the server secret key
+    static string GetServerSecretKey() => typeof(Account).GetField("ServerSecretKey", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)?.GetValue(null)?.ToString() ?? "SuperSecretKeyChangeMe!";
 
     // Point d'entrée principal du programme
     static async Task Main()
@@ -70,6 +75,12 @@ class Program
                     {
                         userPassword = password;
                         Console.WriteLine("Connexion réussie !\n");
+                        // Vérifier et régénérer la signature si manquante
+                        if (string.IsNullOrEmpty(currentAccount.ScoreSignature))
+                        {
+                            currentAccount.ScoreSignature = Account.GenerateScoreSignature(currentAccount.Score, GetServerSecretKey());
+                            Account.SaveAccounts(accounts);
+                        }
                         break;
                     }
                     else
@@ -88,6 +99,7 @@ class Program
                         string password = ReadPassword();
                         var (hash, salt) = PasswordService.HashPassword(password);
                         currentAccount = new Account(username, hash, salt);
+                        currentAccount.ScoreSignature = Account.GenerateScoreSignature(currentAccount.Score, GetServerSecretKey());
                         accounts.Add(currentAccount);
                         Account.SaveAccounts(accounts);
                         userPassword = password;
@@ -188,6 +200,7 @@ class Program
                                     // Synchronisation immédiate du score du compte après victoire
                                     currentAccount.Score = game.Score;
                                     currentAccount.ScoreDateUtc = DateTime.UtcNow;
+                                    currentAccount.ScoreSignature = Account.GenerateScoreSignature(currentAccount.Score, GetServerSecretKey());
                                     Account.SaveAccounts(accounts);
                                     Console.WriteLine("Partie terminée. Retour au menu principal.\n");
                                     inGame = false;

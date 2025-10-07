@@ -15,7 +15,9 @@ namespace SaveApp
         // Initialisation de la connexion et création des collections
         public static async Task InitializeAsync()
         {
-            Client = new MongoClient("mongodb://localhost:27017");
+            // Use a secure, limited-access connection string for Atlas
+            string connectionString = "mongodb+srv://GameUser:7bdvHOhpUkdsEg3Z@mydatacluster.rppw4sk.mongodb.net/game?retryWrites=true&w=majority";
+            Client = new MongoClient(connectionString);
             Database = Client.GetDatabase("game");
             // Création des collections si elles n'existent pas
             var collections = await Database.ListCollectionNames().ToListAsync();

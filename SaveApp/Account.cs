@@ -16,6 +16,8 @@ public class Account
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public int Score { get; set; } = 0;
     public DateTime ScoreDateUtc { get; set; } = DateTime.UtcNow;
+    public string ScoreSignature { get; set; } = default!;
+    private const string ServerSecretKey = "SuperSecretKeyChangeMe!"; // TODO: Move to config/env
 
     // Constructeur par défaut
     public Account() { }
@@ -45,5 +47,24 @@ public class Account
         collection.DeleteMany(Builders<Account>.Filter.Empty);
         if (accounts.Count > 0)
             collection.InsertMany(accounts);
+    }
+
+    // Génère la signature HMAC du score
+    public static string GenerateScoreSignature(int score, string secretKey)
+    {
+        using var hmac = new System.Security.Cryptography.HMACSHA256(System.Text.Encoding.UTF8.GetBytes(secretKey));
+        var scoreBytes = BitConverter.GetBytes(score);
+        var hash = hmac.ComputeHash(scoreBytes);
+        return Convert.ToBase64String(hash);
+    }
+
+    // Vérifie la signature HMAC du score
+    public static bool VerifyScoreSignature(int score, string signature, string secretKey)
+    {
+        var expected = GenerateScoreSignature(score, secretKey);
+        return System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(
+            Convert.FromBase64String(signature),
+            Convert.FromBase64String(expected)
+        );
     }
 }
