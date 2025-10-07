@@ -1,8 +1,7 @@
 using MongoDB.Bson;
 using MongoDB.Driver;
 
-
-namespace SaveApp
+namespace SaveApp.SaveApp
 {
     public static class AccountMigration
     {

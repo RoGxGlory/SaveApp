@@ -1,9 +1,8 @@
-﻿
-Microsoft Visual Studio Solution File, Format Version 12.00
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.11.35312.102
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SaveApp", "SaveApp\SaveApp.csproj", "{2BF3363F-50DC-450A-8785-28D90652A51B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SaveApp", "SaveApp.csproj", "{2BF3363F-50DC-450A-8785-28D90652A51B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

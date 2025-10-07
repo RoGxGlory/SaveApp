@@ -1,9 +1,10 @@
 // Classe représentant un compte utilisateur avec gestion du stockage et de la récupération
+
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Driver;
-using SaveApp;
 
+namespace SaveApp.SaveApp;
 
 public class Account
 {

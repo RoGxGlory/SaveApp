@@ -1,11 +1,13 @@
 // Classe représentant la logique du jeu, la gestion de la partie et la sauvegarde chiffrée
-using System.Text.Json;
+
 using System.Security.Cryptography;
 using System.Text;
-using MongoDB.Driver;
+using System.Text.Json;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
-using SaveApp;
+using MongoDB.Driver;
+
+namespace SaveApp.SaveApp;
 
 public class SaveData
 {

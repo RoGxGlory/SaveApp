@@ -1,5 +1,6 @@
 ﻿// Programme principal du jeu console avec gestion multi-comptes, sauvegarde chiffrée et menu interactif
-using SaveApp;
+
+namespace SaveApp.SaveApp;
 
 class Program
 {
@@ -51,7 +52,7 @@ class Program
         // Initialisation de la connexion MongoDB et des collections
         await MongoService.InitializeAsync();
         // Migration des anciens comptes MongoDB
-        SaveApp.AccountMigration.MigrateAccountsCollection();
+        global::SaveApp.SaveApp.AccountMigration.MigrateAccountsCollection();
 
         while (true) // Boucle générale pour permettre la reconnexion après déconnexion
         {

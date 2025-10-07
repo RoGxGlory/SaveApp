@@ -1,9 +1,8 @@
 using MongoDB.Bson;
 using MongoDB.Driver;
-using System.Threading.Tasks;
 
 // Service statique pour la connexion à MongoDB
-namespace SaveApp
+namespace SaveApp.SaveApp
 {
     public static class MongoService
     {
