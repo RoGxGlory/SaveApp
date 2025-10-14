@@ -15,37 +15,35 @@ class Program
         Console.WriteLine("5. Nouvelle sauvegarde");
         Console.WriteLine("6. Quitter");
         Console.WriteLine("7. Se déconnecter");
+        Console.WriteLine("8. Afficher le leaderboard");
         Console.Write("Choix : ");
     }
 
-    // Affiche le menu en jeu
+    // Nouveau menu en jeu pour le gameplay d'exploration
     static void ShowInGameMenu()
     {
         Console.WriteLine("\n=== MENU EN JEU ===");
-        Console.WriteLine("1. Deviner un nombre");
-        Console.WriteLine("2. Retour au menu principal");
-        Console.WriteLine("3. Afficher le leaderboard");
+        Console.WriteLine("1. Se déplacer (haut/bas/gauche/droite)");
+        Console.WriteLine("2. Combattre");
+        Console.WriteLine("3. Ramasser un objet");
+        Console.WriteLine("4. Retour au menu principal");
         Console.Write("Choix : ");
     }
 
+    // Affichage du leaderboard avec alignement correct
     static async Task ShowLeaderboardAsync()
     {
-        var accounts = await ApiClient.GetLeaderboardAsync();
+        var accounts = ApiClient.SortLeaderboard(await ApiClient.GetLeaderboardAsync());
         Console.WriteLine("\n=== LEADERBOARD ===");
-        Console.WriteLine($"{"Utilisateur",-18} | {"Score",5} | {"Date du score",-19} | {"Intégrité",-9}");
-        Console.WriteLine(new string('-', 18) + " | " + new string('-', 5) + " | " + new string('-', 19) + " | " + new string('-', 9));
-        foreach (var acc in accounts.OrderByDescending(a => a.Score))
+        Console.WriteLine($"{"Utilisateur",-18} | {"Monstres tués",-13} | {"Distance",-10} | {"Date du score",-19} | {"Intégrité",-9}");
+        Console.WriteLine(new string('-', 18) + " | " + new string('-', 13) + " | " + new string('-', 10) + " | " + new string('-', 19) + " | " + new string('-', 9));
+        foreach (var acc in accounts.OrderByDescending(a => a.MonstersKilled))
         {
+            string integrity = string.IsNullOrEmpty(acc.Integrity) ? "UNKNOWN" : acc.Integrity;
+            string dateStr = acc.ScoreDateUtc;
             if (DateTime.TryParse(acc.ScoreDateUtc, out var date))
-            {
-                string integrity = string.IsNullOrEmpty(acc.Integrity) ? "UNKNOWN" : acc.Integrity;
-                Console.WriteLine($"{acc.Username,-18} | {acc.Score,5} | {date:yyyy-MM-dd HH:mm:ss} | {integrity,-9}");
-            }
-            else
-            {
-                string integrity = string.IsNullOrEmpty(acc.Integrity) ? "UNKNOWN" : acc.Integrity;
-                Console.WriteLine($"{acc.Username,-18} | {acc.Score,5} | {acc.ScoreDateUtc,-19} | {integrity,-9}");
-            }
+                dateStr = date.ToString("yyyy-MM-dd HH:mm:ss");
+            Console.WriteLine($"{acc.Username,-18} | {acc.MonstersKilled,-13} | {acc.DistanceTraveled,-10} | {dateStr,-19} | {integrity,-9}");
         }
         Console.WriteLine();
     }
@@ -99,134 +97,93 @@ class Program
             // Ensure account score from server is authoritative to avoid overwriting higher server value
             if (currentAccount != null)
             {
-                // If the saved game has a lower score (stale), keep server score and align game
-                if (game.Score < currentAccount.Score)
-                    game.Score = currentAccount.Score;
+                // On synchronise le nombre de monstres tués
+                if (game.MonstersKilled < currentAccount.MonstersKilled)
+                    game.MonstersKilled = currentAccount.MonstersKilled;
                 else
-                    currentAccount.Score = Math.Max(currentAccount.Score, game.Score);
+                    currentAccount.MonstersKilled = Math.Max(currentAccount.MonstersKilled, game.MonstersKilled);
             }
-            bool running = true;
-            bool inGame = false;
-
-            // Boucle principale du menu utilisateur
-            while (running)
+            // Synchronisation des sauvegardes locales au démarrage
+            string localSavePath = $"{username}_local_save.json";
+            await Game.SyncLocalIfValid(localSavePath);
+            bool quitter = false;
+            while (!quitter)
             {
-                if (!inGame)
+                ShowMenu();
+                string choix = Console.ReadLine() ?? "";
+                switch (choix)
                 {
-                    ShowMenu(); // Affiche le menu principal
-                    string? input = Console.ReadLine();
-                    switch (input)
-                    {
-                        case "1":
-                            // Nouvelle partie
-                            game.StartNewGame();
-                            Console.WriteLine("Nouvelle partie démarrée ! Devinez un nombre entre 1 et 100.\n");
-                            inGame = true;
-                            break;
-                        case "2":
-                            // Charger la partie sauvegardée
-                            game = await Game.LoadEncryptedAsync(username, userPassword);
-                            Console.WriteLine("Partie chargée.\n");
-                            if (!game.InProgress)
+                    case "1":
+                        game.StartNewGame();
+                        Console.WriteLine("Nouvelle partie lancée !\n");
+                        // Boucle de jeu principale
+                        while (game.InProgress)
+                        {
+                            Console.WriteLine($"\nTour {game.Turn + 1} | PV : {game.Arena.Player.Health} | Monstres tués : {game.MonstersKilled} | Distance parcourue : {game.DistanceTraveled} | Pos : ({game.Arena.Player.X},{game.Arena.Player.Y})");
+                            // Affichage visuel de l'arène
+                            Console.WriteLine(game.Arena.GetVisual());
+                            ShowInGameMenu();
+                            string action = Console.ReadLine()?.ToLower() ?? "";
+                            string result = "";
+                            switch (action)
                             {
-                                Console.WriteLine("Aucune partie en cours dans la sauvegarde. Nouvelle partie démarrée !\n");
-                                game.StartNewGame();
+                                case "1":
+                                    Console.Write("Direction (haut/bas/gauche/droite) : ");
+                                    string dir = Console.ReadLine()?.ToLower() ?? "";
+                                    result = game.PlayTurn(dir, username, userPassword, currentAccount, null);
+                                    break;
+                                case "2":
+                                    result = game.PlayTurn("combattre", username, userPassword, currentAccount, null);
+                                    break;
+                                case "3":
+                                    result = game.PlayTurn("ramasser", username, userPassword, currentAccount, null);
+                                    break;
+                                case "4":
+                                    Console.WriteLine("Retour au menu principal...");
+                                    game.InProgress = false;
+                                    break;
+                                default:
+                                    Console.WriteLine("Choix invalide.");
+                                    break;
                             }
-                            inGame = true;
-                            break;
-                        case "3":
-                            // Sauvegarder la partie en cours (chiffrée)
-                            await Game.SaveEncryptedAsync(game, username, userPassword, currentAccount, null);
-                            Console.WriteLine("Partie sauvegardée (chiffrée).\n");
-                            break;
-                        case "4":
-                            // Afficher le score et les essais
-                            Console.WriteLine($"Score (parties gagnées) : {currentAccount.Score}\n");
-                            if (game.InProgress)
-                                Console.WriteLine($"Essais dans la partie en cours : {game.Attempts}\n");
-                            break;
-                        case "5":
-                            // Nouvelle sauvegarde (réinitialisation)
-                            game = new Game();
-                            game.StartNewGame();
-                            await Game.SaveEncryptedAsync(game, username, userPassword, currentAccount, null);
-                            Console.WriteLine("Nouvelle sauvegarde créée (chiffrée). Partie réinitialisée ! Devinez un nombre entre 1 et 100.\n");
-                            inGame = true;
-                            break;
-                        case "6":
-                            // Quitter l'application
-                            running = false;
-                            await Game.SaveEncryptedAsync(game, username, userPassword, currentAccount, null);
-                            Console.WriteLine("Partie sauvegardée (chiffrée) et application quittée.\n");
-                            Environment.Exit(0);
-                            break;
-                        case "7":
-                            // Déconnexion (retour à l'écran de connexion)
-                            await Game.SaveEncryptedAsync(game, username, userPassword, currentAccount, null);
-                            Console.WriteLine("Déconnexion...\n");
-                            running = false; // Sort de la boucle du menu pour revenir à la connexion
-                            break;
-                        default:
-                            Console.WriteLine("Choix invalide.\n");
-                            break;
-                    }
-                }
-                else // inGame == true
-                {
-                    ShowInGameMenu(); // Affiche le menu en jeu
-                    string? input = Console.ReadLine();
-                    switch (input)
-                    {
-                        case "1":
-                            // Deviner un nombre
-                            if (!game.InProgress)
-                            {
-                                Console.WriteLine("Aucune partie en cours. Retour au menu principal.\n");
-                                inGame = false;
-                                break;
-                            }
-                            Console.Write("Votre proposition : ");
-                            if (int.TryParse(Console.ReadLine(), out int guess))
-                            {
-                                string result = game.Play(guess);
+                            if (!string.IsNullOrWhiteSpace(result))
                                 Console.WriteLine(result);
-                                if (!game.InProgress)
-                                {
-                                    // Synchronisation immédiate du score du compte après victoire
-                                    // Merge local session score with account to avoid downgrading server score
-                                    if (currentAccount != null)
-                                    {
-                                        currentAccount.Score = Math.Max(currentAccount.Score, game.Score);
-                                        await ApiClient.SaveAccountAsync(currentAccount.Username, currentAccount.Score);
-                                    }
-                                    Console.WriteLine("Partie terminée. Retour au menu principal.\n");
-                                    inGame = false;
-                                }
-                            }
-                            else
-                            {
-                                Console.WriteLine("Entrée invalide.\n");
-                            }
-                            break;
-                        case "2":
-                            // Retour au menu principal
-                            Console.WriteLine("Retour au menu principal.\n");
-                            inGame = false;
-                            break;
-                        case "3":
-                            // Afficher le leaderboard
-                            await ShowLeaderboardAsync();
-                            break;
-                        default:
-                            Console.WriteLine("Choix invalide.\n");
-                            break;
-                    }
+                        }
+                        break;
+                    case "2":
+                        game = await Game.LoadEncryptedAsync(username, userPassword);
+                        Console.WriteLine("Partie chargée !\n");
+                        break;
+                    case "3":
+                        await Game.SaveEncryptedAsync(game, username, userPassword, currentAccount);
+                        Console.WriteLine("Sauvegarde effectuée !\n");
+                        break;
+                    case "4":
+                        Console.WriteLine($"Monstres tués : {game.MonstersKilled} | Distance parcourue : {game.DistanceTraveled}\n");
+                        break;
+                    case "5":
+                        await Game.SaveEncryptedAsync(game, username, userPassword, currentAccount);
+                        Console.WriteLine("Nouvelle sauvegarde créée !\n");
+                        break;
+                    case "6":
+                        quitter = true;
+                        break;
+                    case "7":
+                        Console.WriteLine("Déconnexion...");
+                        quitter = true;
+                        break;
+                    case "8":
+                        await ShowLeaderboardAsync();
+                        break;
+                    default:
+                        Console.WriteLine("Choix invalide.");
+                        break;
                 }
             }
         }
     }
 
-    // Lecture masquée du mot de passe (affiche des * à l'écran)
+    // Méthode utilitaire pour lire un mot de passe sans l'afficher
     static string ReadPassword()
     {
         var pwd = new System.Text.StringBuilder();
@@ -234,12 +191,16 @@ class Program
         {
             var key = Console.ReadKey(true);
             if (key.Key == ConsoleKey.Enter) break;
-            if (key.Key == ConsoleKey.Backspace && pwd.Length > 0)
+            if (key.Key == ConsoleKey.Backspace)
             {
-                pwd.Length--;
-                Console.Write("\b \b");
+                if (pwd.Length > 0)
+                {
+                    pwd.Length--;
+                    Console.Write("\b \b");
+                }
+                continue;
             }
-            else if (!char.IsControl(key.KeyChar))
+            if (!char.IsControl(key.KeyChar))
             {
                 pwd.Append(key.KeyChar);
                 Console.Write("*");

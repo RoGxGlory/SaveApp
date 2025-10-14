@@ -16,9 +16,10 @@ public class Account
     public string PasswordHashB64 { get; set; } = default!;
     public string SaltB64 { get; set; } = default!;
     public DateTime CreatedUtc { get; set; }
-    public int Score { get; set; }
-    public DateTime ScoreDateUtc { get; set; }
-    public string ScoreSignature { get; set; } = string.Empty;
+    public int MonstersKilled { get; set; }
+    public int DistanceTraveled { get; set; }
+    public DateTime MonstersKilledDateUtc { get; set; }
+    public string MonstersKilledSignature { get; set; } = string.Empty;
     public string Integrity { get; set; } = string.Empty;
 
     // Constructeur par défaut
@@ -31,8 +32,9 @@ public class Account
         PasswordHashB64 = hashB64;
         SaltB64 = saltB64;
         CreatedUtc = DateTime.UtcNow;
-        Score = 0;
-        ScoreDateUtc = DateTime.UtcNow;
+        MonstersKilled = 0;
+        DistanceTraveled = 0;
+        MonstersKilledDateUtc = DateTime.UtcNow;
     }
 
     // Load all accounts from the API
@@ -60,19 +62,19 @@ public class Account
         return _cachedSecretKey;
     }
 
-    // Génère la signature HMAC du score
-    public static string GenerateScoreSignature(int score, string secretKey)
+    // Génère la signature HMAC du MonstersKilled
+    public static string GenerateMonstersKilledSignature(int MonstersKilled, string secretKey)
     {
         using var hmac = new System.Security.Cryptography.HMACSHA256(System.Text.Encoding.UTF8.GetBytes(secretKey));
-        var scoreBytes = BitConverter.GetBytes(score);
-        var hash = hmac.ComputeHash(scoreBytes);
+        var MonstersKilledBytes = BitConverter.GetBytes(MonstersKilled);
+        var hash = hmac.ComputeHash(MonstersKilledBytes);
         return Convert.ToBase64String(hash);
     }
 
-    // Vérifie la signature HMAC du score
-    public static bool VerifyScoreSignature(int score, string signature, string secretKey)
+    // Vérifie la signature HMAC du MonstersKilled
+    public static bool VerifyMonstersKilledSignature(int MonstersKilled, string signature, string secretKey)
     {
-        var expected = GenerateScoreSignature(score, secretKey);
+        var expected = GenerateMonstersKilledSignature(MonstersKilled, secretKey);
         return System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(
             Convert.FromBase64String(signature),
             Convert.FromBase64String(expected)

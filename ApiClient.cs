@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace SaveApp;
 
@@ -16,8 +17,10 @@ public class LeaderboardEntry
 {
     [JsonPropertyName("username")]
     public string Username { get; set; } = string.Empty;
-    [JsonPropertyName("score")]
-    public int Score { get; set; }
+    [JsonPropertyName("monstersKilled")]
+    public int MonstersKilled { get; set; }
+    [JsonPropertyName("distanceTraveled")]
+    public int DistanceTraveled { get; set; }
     [JsonPropertyName("scoreDateUtc")]
     public string ScoreDateUtc { get; set; } = string.Empty;
     [JsonPropertyName("integrity")]
@@ -105,11 +108,41 @@ public static class ApiClient
         return new RegisterResult { Success = true, Account = account };
     }
 
-    public static async Task SaveAccountAsync(string username, int score)
+    public static async Task SaveAccountAsync(string username, int monstersKilled, int distanceTraveled, DateTime endDate)
     {
-        var payload = new { Username = username, Score = score };
-        var response = await HttpClient.PostAsJsonAsync($"{ApiBaseUrl}/account/save", payload);
-        response.EnsureSuccessStatusCode();
+        var payload = new { Username = username, MonstersKilled = monstersKilled, DistanceTraveled = distanceTraveled, EndDate = endDate };
+        try
+        {
+            var response = await HttpClient.PostAsJsonAsync($"{ApiBaseUrl}/account/save", payload);
+            response.EnsureSuccessStatusCode();
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"Progression inférieure à celle sur le serveur : Données non sauvegardées. Détails : {ex.Message}");
+            // Optionnel : Log l'erreur ou notifie l'utilisateur
+        }
+    }
+
+    public static async Task<Account?> GetAccountAsync(string username)
+    {
+        var accounts = await GetAccountsAsync();
+        if (accounts == null || accounts.Count == 0)
+        {
+            return null; // Retourne null si la liste est vide ou nulle
+        }
+
+        // Filtre les comptes nuls avant d'accéder à leurs propriétés
+        return accounts
+            .Where(account => account != null)
+            .FirstOrDefault(account => account.Username.Equals(username, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public static List<LeaderboardEntry> SortLeaderboard(List<LeaderboardEntry> leaderboard)
+    {
+        return leaderboard
+            .OrderByDescending(entry => entry.MonstersKilled)
+            .ThenByDescending(entry => entry.DistanceTraveled)
+            .ToList();
     }
 }
 
