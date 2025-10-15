@@ -48,17 +48,18 @@ class Program
     static async Task ShowLeaderboardAsync()
     {
         var accounts = ApiClient.SortLeaderboard(await ApiClient.GetLeaderboardAsync());
-        Console.WriteLine("\n=== LEADERBOARD ===");
+        Console.WriteLine("\n" + new string('=', 35)+ " LEADERBOARD "+ new string('=', 35));
         Console.WriteLine($"{"User",-18} | {"Monsters killed",-13} | {"Distance",-10} | {"Score date",-19} | {"Integrity",-9}");
-        Console.WriteLine(new string('-', 18) + " | " + new string('-', 13) + " | " + new string('-', 10) + " | " + new string('-', 19) + " | " + new string('-', 9));
+        Console.WriteLine(new string('-', 18) + " | " + new string('-', 15) + " | " + new string('-', 10) + " | " + new string('-', 19) + " | " + new string('-', 9));
         foreach (var acc in accounts.OrderByDescending(a => a.MonstersKilled))
         {
             string integrity = string.IsNullOrEmpty(acc.Integrity) ? "UNKNOWN" : acc.Integrity;
             string dateStr = acc.ScoreDateUtc;
             if (DateTime.TryParse(acc.ScoreDateUtc, out var date))
                 dateStr = date.ToString("yyyy-MM-dd HH:mm:ss");
-            Console.WriteLine($"{acc.Username,-18} | {acc.MonstersKilled,-13} | {acc.DistanceTraveled,-10} | {dateStr,-19} | {integrity,-9}");
+            Console.WriteLine($"{acc.Username,-18} | {acc.MonstersKilled,-15} | {acc.DistanceTraveled,-10} | {dateStr,-19} | {integrity,-9}");
         }
+        Console.WriteLine(new string('=', 83));
         Console.WriteLine();
     }
     

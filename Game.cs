@@ -257,19 +257,19 @@ public class Game
         bool actionEffectuee = false;
         switch (action.ToLower())
         {
-            case "haut":
-            case "bas":
-            case "gauche":
-            case "droite":
+            case "up":
+            case "down":
+            case "left":
+            case "right":
                 var moveResult = MovePlayer(action);
                 result = moveResult.Item1;
                 actionEffectuee = moveResult.Item2;
                 break;
-            case "combattre":
+            case "fight":
                 result = FightMonster();
                 actionEffectuee = true;
                 break;
-            case "ramasser":
+            case "pick":
                 result = PickupItem();
                 actionEffectuee = true;
                 break;
@@ -310,10 +310,10 @@ public class Game
         int y = Arena.Player.Y;
         switch (direction.ToLower())
         {
-            case "haut": y--; break;
-            case "bas": y++; break;
-            case "gauche": x--; break;
-            case "droite": x++; break;
+            case "up": y--; break;
+            case "down": y++; break;
+            case "left": x--; break;
+            case "right": x++; break;
         }
         if (x < 0 || x >= Arena.Width || y < 0 || y >= Arena.Height)
             return ("Cannot leave the arena !\n", false);
@@ -393,6 +393,7 @@ public class Game
             Tag = Convert.ToBase64String(tag),
             Data = Convert.ToBase64String(ciphertext)
         };
+        Console.WriteLine($"DEBUG: SaveData before API call: Username={save.Username}, Salt={save.Salt}, Nonce={save.Nonce}, Tag={save.Tag}, DataLength={save.Data.Length}");
         await ApiClient.SaveGameAsync(save);
         // Local save
         if (currentAccount != null)
@@ -404,7 +405,7 @@ public class Game
             currentAccount.MonstersKilledSignature = Account.GenerateMonstersKilledSignature(
                 currentAccount.MonstersKilled, Account.GetServerSecretKey());
 
-            await ApiClient.SaveAccountAsync(username, currentAccount.MonstersKilled, currentAccount.DistanceTraveled, DateTime.Now);
+            await ApiClient.SaveAccountAsync(username, currentAccount.Email, currentAccount.MonstersKilled, currentAccount.DistanceTraveled);
         }
     }
 
@@ -479,9 +480,9 @@ public class Game
             {
                 await ApiClient.SaveAccountAsync(
                     data.Account.Username,
+                    data.Account.Email,
                     data.Account.MonstersKilled,
-                    data.Account.DistanceTraveled,
-                    data.Account.MonstersKilledDateUtc);
+                    data.Account.DistanceTraveled);
             }
         }
     }

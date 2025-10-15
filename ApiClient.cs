@@ -152,9 +152,9 @@ public static class ApiClient
     /// <summary>
     /// Saves the account data, including progression information.
     /// </summary>
-    public static async Task SaveAccountAsync(string username, int monstersKilled, int distanceTraveled, DateTime endDate)
+    public static async Task SaveAccountAsync(string username, string email, int monstersKilled, int distanceTraveled)
     {
-        var payload = new { Username = username, MonstersKilled = monstersKilled, DistanceTraveled = distanceTraveled, EndDate = endDate };
+        var payload = new { Username = username, Email = email, MonstersKilled = monstersKilled, DistanceTraveled = distanceTraveled };
         try
         {
             var response = await HttpClient.PostAsJsonAsync($"{ApiBaseUrl}/account/save", payload);
