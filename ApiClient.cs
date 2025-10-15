@@ -116,14 +116,16 @@ public static class ApiClient
     /// </summary>
     public static async Task<LoginResult> LoginAsync(string identifier, string password, bool isEmail = false)
     {
-        LoginPayload payload;
+        object payload;
         if (isEmail)
-            payload = new LoginPayload { Email = identifier, Password = password };
+            payload = new { Email = identifier, Password = password };
         else
-            payload = new LoginPayload { Username = identifier, Password = password };
+            payload = new { Username = identifier, Password = password };
         var response = await HttpClient.PostAsJsonAsync($"{ApiBaseUrl}/account/login", payload);
         if (!response.IsSuccessStatusCode)
         {
+            var error = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"API Login error: {response.StatusCode} - {error}");
             return new LoginResult { Success = false };
         }
         var account = await response.Content.ReadFromJsonAsync<Account>();
@@ -139,6 +141,8 @@ public static class ApiClient
         var response = await HttpClient.PostAsJsonAsync($"{ApiBaseUrl}/account/register", payload);
         if (!response.IsSuccessStatusCode)
         {
+            var error = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"API Register error: {response.StatusCode} - {error}");
             return new RegisterResult { Success = false };
         }
         var account = await response.Content.ReadFromJsonAsync<Account>();
