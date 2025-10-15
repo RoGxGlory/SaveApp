@@ -1,41 +1,51 @@
-﻿// Programme principal du jeu console avec gestion multi-comptes, sauvegarde chiffrée et menu interactif
+﻿// Main program for the console game with multi-account management, encrypted save, and interactive menu
 
 namespace SaveApp;
 
+/// <summary>
+/// Entry point and main loop for the SaveApp console game.
+/// Handles user authentication, game session management, and menu navigation.
+/// </summary>
 class Program
 {
-    // Affiche le menu principal
+    /// <summary>
+    /// Displays the main menu options to the user.
+    /// </summary>
     static void ShowMenu()
     {
-        Console.WriteLine("\n=== MENU PRINCIPAL ===");
-        Console.WriteLine("1. Nouvelle partie");
-        Console.WriteLine("2. Charger la partie");
-        Console.WriteLine("3. Sauvegarder");
-        Console.WriteLine("4. Afficher le score");
-        Console.WriteLine("5. Nouvelle sauvegarde");
-        Console.WriteLine("6. Quitter");
-        Console.WriteLine("7. Se déconnecter");
-        Console.WriteLine("8. Afficher le leaderboard");
-        Console.Write("Choix : ");
+        Console.WriteLine("\n=== MAIN MENU ===");
+        Console.WriteLine("1. New game");
+        Console.WriteLine("2. Load game");
+        Console.WriteLine("3. Save");
+        Console.WriteLine("4. Show score");
+        Console.WriteLine("5. New save");
+        Console.WriteLine("6. Quit");
+        Console.WriteLine("7. Log out");
+        Console.WriteLine("8. Show leaderboard");
+        Console.Write("Choice: ");
     }
 
-    // Nouveau menu en jeu pour le gameplay d'exploration
+    /// <summary>
+    /// Displays the in-game menu for exploration and actions.
+    /// </summary>
     static void ShowInGameMenu()
     {
-        Console.WriteLine("\n=== MENU EN JEU ===");
-        Console.WriteLine("1. Se déplacer (haut/bas/gauche/droite)");
-        Console.WriteLine("2. Combattre");
-        Console.WriteLine("3. Ramasser un objet");
-        Console.WriteLine("4. Retour au menu principal");
-        Console.Write("Choix : ");
+        Console.WriteLine("\n=== IN-GAME MENU ===");
+        Console.WriteLine("1. Move (up/down/left/right)");
+        Console.WriteLine("2. Fight");
+        Console.WriteLine("3. Pick up an item");
+        Console.WriteLine("4. Return to main menu");
+        Console.Write("Choice: ");
     }
 
-    // Affichage du leaderboard avec alignement correct
+    /// <summary>
+    /// Displays the leaderboard with player statistics.
+    /// </summary>
     static async Task ShowLeaderboardAsync()
     {
         var accounts = ApiClient.SortLeaderboard(await ApiClient.GetLeaderboardAsync());
         Console.WriteLine("\n=== LEADERBOARD ===");
-        Console.WriteLine($"{"Utilisateur",-18} | {"Monstres tués",-13} | {"Distance",-10} | {"Date du score",-19} | {"Intégrité",-9}");
+        Console.WriteLine($"{"User",-18} | {"Monsters killed",-13} | {"Distance",-10} | {"Score date",-19} | {"Integrity",-9}");
         Console.WriteLine(new string('-', 18) + " | " + new string('-', 13) + " | " + new string('-', 10) + " | " + new string('-', 19) + " | " + new string('-', 9));
         foreach (var acc in accounts.OrderByDescending(a => a.MonstersKilled))
         {
@@ -48,62 +58,76 @@ class Program
         Console.WriteLine();
     }
     
-    // Point d'entrée principal du programme
+    /// <summary>
+    /// Main entry point and game loop. Handles authentication, game session, and menu navigation.
+    /// </summary>
     static async Task Main()
     {
         while (true)
         {
-            string username;
+            string identifier;
             Account? currentAccount = null;
             string userPassword = null;
-            // Boucle de connexion ou création de compte
+            // Loop for login or account creation
             while (true)
             {
-                Console.Write("Entrez votre nom d'utilisateur : ");
-                username = Console.ReadLine() ?? "Invité";
-                Console.Write("Mot de passe : ");
+                Console.Write("Do you want to log in with (1) username or (2) email? ");
+                string choixLogin = Console.ReadLine();
+                bool isEmail = false;
+                if (choixLogin == "2")
+                {
+                    Console.Write("Enter your email: ");
+                    identifier = Console.ReadLine() ?? "";
+                    isEmail = true;
+                }
+                else
+                {
+                    Console.Write("Enter your username: ");
+                    identifier = Console.ReadLine() ?? "Guest";
+                }
+                Console.Write("Password: ");
                 string password = ReadPassword();
-                var loginResult = await ApiClient.LoginAsync(username, password);
+                var loginResult = await ApiClient.LoginAsync(identifier, password, isEmail);
                 if (loginResult.Success)
                 {
                     currentAccount = loginResult.Account;
                     userPassword = password;
-                    Console.WriteLine("Connexion réussie !\n");
+                    Console.WriteLine("Login successful!\n");
                     break;
                 }
                 else
                 {
-                    Console.WriteLine("Aucun compte trouvé. Voulez-vous en créer un ? (o/n)");
+                    Console.WriteLine("No account found. Do you want to create one? (y/n)");
                     string rep = Console.ReadLine()?.ToLower() ?? "n";
                     if (rep == "o" || rep == "oui" || rep == "y")
                     {
-                        var registerResult = await ApiClient.RegisterAsync(username, password);
+                        var registerResult = await ApiClient.RegisterAsync(identifier, password);
                         if (registerResult.Success)
                         {
                             currentAccount = registerResult.Account;
                             userPassword = password;
-                            Console.WriteLine("Compte créé et connecté !\n");
+                            Console.WriteLine("Account created and logged in!\n");
                             break;
                         }
                         else
                         {
-                            Console.WriteLine("Erreur lors de la création du compte.\n");
+                            Console.WriteLine("Error while creating account.\n");
                         }
                     }
                 }
             }
-            // Chargement de la sauvegarde chiffrée du jeu pour l'utilisateur connecté
+            // Load encrypted game save for the logged-in user
             Game game = await Game.LoadEncryptedAsync(username, userPassword);
             // Ensure account score from server is authoritative to avoid overwriting higher server value
             if (currentAccount != null)
             {
-                // On synchronise le nombre de monstres tués
+                // Synchronize the number of monsters killed
                 if (game.MonstersKilled < currentAccount.MonstersKilled)
                     game.MonstersKilled = currentAccount.MonstersKilled;
                 else
                     currentAccount.MonstersKilled = Math.Max(currentAccount.MonstersKilled, game.MonstersKilled);
             }
-            // Synchronisation des sauvegardes locales au démarrage
+            // Synchronize local saves at startup
             string localSavePath = $"{username}_local_save.json";
             await Game.SyncLocalIfValid(localSavePath);
             bool quitter = false;
@@ -115,12 +139,12 @@ class Program
                 {
                     case "1":
                         game.StartNewGame();
-                        Console.WriteLine("Nouvelle partie lancée !\n");
-                        // Boucle de jeu principale
+                        Console.WriteLine("New game started!\n");
+                        // Main game loop
                         while (game.InProgress)
                         {
-                            Console.WriteLine($"\nTour {game.Turn + 1} | PV : {game.Arena.Player.Health} | Monstres tués : {game.MonstersKilled} | Distance parcourue : {game.DistanceTraveled} | Pos : ({game.Arena.Player.X},{game.Arena.Player.Y})");
-                            // Affichage visuel de l'arène
+                            Console.WriteLine($"\nTurn {game.Turn + 1} | HP: {game.Arena.Player.Health} | Monsters killed: {game.MonstersKilled} | Distance traveled: {game.DistanceTraveled} | Pos: ({game.Arena.Player.X},{game.Arena.Player.Y})");
+                            // Visual display of the arena
                             Console.WriteLine(game.Arena.GetVisual());
                             ShowInGameMenu();
                             string action = Console.ReadLine()?.ToLower() ?? "";
@@ -128,22 +152,22 @@ class Program
                             switch (action)
                             {
                                 case "1":
-                                    Console.Write("Direction (haut/bas/gauche/droite) : ");
+                                    Console.Write("Direction (up/down/left/right): ");
                                     string dir = Console.ReadLine()?.ToLower() ?? "";
                                     result = game.PlayTurn(dir, username, userPassword, currentAccount, null);
                                     break;
                                 case "2":
-                                    result = game.PlayTurn("combattre", username, userPassword, currentAccount, null);
+                                    result = game.PlayTurn("fight", username, userPassword, currentAccount, null);
                                     break;
                                 case "3":
-                                    result = game.PlayTurn("ramasser", username, userPassword, currentAccount, null);
+                                    result = game.PlayTurn("pick", username, userPassword, currentAccount, null);
                                     break;
                                 case "4":
-                                    Console.WriteLine("Retour au menu principal...");
+                                    Console.WriteLine("Returning to main menu...");
                                     game.InProgress = false;
                                     break;
                                 default:
-                                    Console.WriteLine("Choix invalide.");
+                                    Console.WriteLine("Invalid choice.");
                                     break;
                             }
                             if (!string.IsNullOrWhiteSpace(result))
@@ -152,38 +176,40 @@ class Program
                         break;
                     case "2":
                         game = await Game.LoadEncryptedAsync(username, userPassword);
-                        Console.WriteLine("Partie chargée !\n");
+                        Console.WriteLine("Game loaded!\n");
                         break;
                     case "3":
                         await Game.SaveEncryptedAsync(game, username, userPassword, currentAccount);
-                        Console.WriteLine("Sauvegarde effectuée !\n");
+                        Console.WriteLine("Save completed!\n");
                         break;
                     case "4":
-                        Console.WriteLine($"Monstres tués : {game.MonstersKilled} | Distance parcourue : {game.DistanceTraveled}\n");
+                        Console.WriteLine($"Monsters killed: {game.MonstersKilled} | Distance traveled: {game.DistanceTraveled}\n");
                         break;
                     case "5":
                         await Game.SaveEncryptedAsync(game, username, userPassword, currentAccount);
-                        Console.WriteLine("Nouvelle sauvegarde créée !\n");
+                        Console.WriteLine("New save created!\n");
                         break;
                     case "6":
                         quitter = true;
                         break;
                     case "7":
-                        Console.WriteLine("Déconnexion...");
+                        Console.WriteLine("Logging out...");
                         quitter = true;
                         break;
                     case "8":
                         await ShowLeaderboardAsync();
                         break;
                     default:
-                        Console.WriteLine("Choix invalide.");
+                        Console.WriteLine("Invalid choice.");
                         break;
                 }
             }
         }
     }
 
-    // Méthode utilitaire pour lire un mot de passe sans l'afficher
+    /// <summary>
+    /// Utility method to read a password without displaying it on the console.
+    /// </summary>
     static string ReadPassword()
     {
         var pwd = new System.Text.StringBuilder();

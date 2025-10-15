@@ -1,4 +1,4 @@
-// Classe représentant la logique du jeu, la gestion de la partie et la sauvegarde chiffrée
+// Class representing the game logic, game management, and encrypted save
 
 using System.Security.Cryptography;
 using System.Text;
@@ -7,6 +7,9 @@ using System.Text.Json.Serialization;
 
 namespace SaveApp;
 
+/// <summary>
+/// Data structure for storing encrypted game save information.
+/// </summary>
 public class SaveData
 {
     [JsonPropertyName("username")]
@@ -21,6 +24,9 @@ public class SaveData
     public string Data { get; set; } = string.Empty;
 }
 
+/// <summary>
+/// Represents the game arena, including player, monsters, items, and exploration state.
+/// </summary>
 public class Arena
 {
     public int Width { get; set; }
@@ -32,6 +38,9 @@ public class Arena
     public bool[,] Explored { get; set; }
     private static Random _rng = new Random();
 
+    /// <summary>
+    /// Initializes a new arena with monsters and items.
+    /// </summary>
     public Arena(int width, int height)
     {
         Width = width;
@@ -44,6 +53,9 @@ public class Arena
         GenerateItems();
     }
 
+    /// <summary>
+    /// Randomly generates monsters in the arena.
+    /// </summary>
     private void GenerateMonsters()
     {
         int count = _rng.Next(3, 7);
@@ -54,11 +66,14 @@ public class Arena
                 X = _rng.Next(Width),
                 Y = _rng.Next(Height),
                 Health = _rng.Next(5, 15),
-                Attack = _rng.Next(1, 4) // Attaque réduite
+                Attack = _rng.Next(1, 4) // Reduced attack
             });
         }
     }
 
+    /// <summary>
+    /// Randomly generates items in the arena.
+    /// </summary>
     private void GenerateItems()
     {
         int count = _rng.Next(3, 7);
@@ -73,11 +88,26 @@ public class Arena
         }
     }
 
+    /// <summary>
+    /// Checks if there is a monster at the given coordinates.
+    /// </summary>
     public bool IsMonsterAt(int x, int y) => Monsters.Any(m => m.X == x && m.Y == y && m.Health > 0);
+    /// <summary>
+    /// Gets the monster at the given coordinates.
+    /// </summary>
     public Monster? GetMonsterAt(int x, int y) => Monsters.FirstOrDefault(m => m.X == x && m.Y == y && m.Health > 0);
+    /// <summary>
+    /// Checks if there is an item at the given coordinates.
+    /// </summary>
     public bool IsItemAt(int x, int y) => Items.Any(i => i.X == x && i.Y == y && !i.PickedUp);
+    /// <summary>
+    /// Gets the item at the given coordinates.
+    /// </summary>
     public Item? GetItemAt(int x, int y) => Items.FirstOrDefault(i => i.X == x && i.Y == y && !i.PickedUp);
 
+    /// <summary>
+    /// Moves monsters towards the player.
+    /// </summary>
     public void MoveMonsters()
     {
         foreach (var monster in Monsters.Where(m => m.Health > 0))
@@ -96,7 +126,7 @@ public class Arena
                 if (dy > 0) newY++;
                 else if (dy < 0) newY--;
             }
-            // Vérifie que la nouvelle position est dans l'arène et non occupée par un autre monstre
+            // Check that the new position is within the arena and not occupied by another monster
             if (newX >= 0 && newX < Width && newY >= 0 && newY < Height && !Monsters.Any(m => m != monster && m.X == newX && m.Y == newY && m.Health > 0))
             {
                 monster.X = newX;
@@ -105,10 +135,13 @@ public class Arena
         }
     }
 
+    /// <summary>
+    /// Gets a visual representation of the arena.
+    /// </summary>
     public string GetVisual()
     {
         var sb = new StringBuilder();
-        // Ligne du haut
+        // Top line
         sb.Append('#', Width + 2).AppendLine();
         for (int y = 0; y < Height; y++)
         {
@@ -126,21 +159,27 @@ public class Arena
             }
             sb.Append('#').AppendLine();
         }
-        // Ligne du bas
+        // Bottom line
         sb.Append('#', Width + 2).AppendLine();
         return sb.ToString();
     }
 }
 
+/// <summary>
+/// Represents the player character.
+/// </summary>
 public class Adventurer
 {
     public int X { get; set; }
     public int Y { get; set; }
-    public int Health { get; set; } = 40; // PV augmentés
+    public int Health { get; set; } = 40; // Increased HP
     public int Attack { get; set; } = 3;
     public List<Item> Inventory { get; set; } = new();
 }
 
+/// <summary>
+/// Represents a monster in the arena.
+/// </summary>
 public class Monster
 {
     public int X { get; set; }
@@ -149,12 +188,18 @@ public class Monster
     public int Attack { get; set; }
 }
 
+/// <summary>
+/// Types of items that can be found in the arena.
+/// </summary>
 public enum ItemType
 {
     Potion,
     Treasure
 }
 
+/// <summary>
+/// Represents an item in the arena.
+/// </summary>
 public class Item
 {
     public int X { get; set; }
@@ -163,6 +208,9 @@ public class Item
     public bool PickedUp { get; set; } = false;
 }
 
+/// <summary>
+/// Manages the game state, progression, and interactions.
+/// </summary>
 public class Game
 {
     private const int DefaultWidth = 24;
@@ -174,6 +222,9 @@ public class Game
     public int DistanceTraveled { get; set; }
     private static Random _rng = new Random();
 
+    /// <summary>
+    /// Initializes a new game instance.
+    /// </summary>
     public Game()
     {
         Arena = new Arena(DefaultWidth, DefaultHeight);
@@ -183,6 +234,9 @@ public class Game
         DistanceTraveled = 0;
     }
 
+    /// <summary>
+    /// Starts a new game with a fresh arena.
+    /// </summary>
     public void StartNewGame()
     {
         Arena = new Arena(DefaultWidth, DefaultHeight);
@@ -192,10 +246,13 @@ public class Game
         DistanceTraveled = 0;
     }
 
+    /// <summary>
+    /// Plays a turn of the game, processing the given action.
+    /// </summary>
     public string PlayTurn(string action, string username, string password, Account? currentAccount = null, List<Account>? allAccounts = null)
     {
         if (!InProgress)
-            return "Aucune partie en cours. Lancez une nouvelle partie.\n";
+            return "No game in progress. Start a new game.\n";
         string result = "";
         bool actionEffectuee = false;
         switch (action.ToLower())
@@ -217,7 +274,7 @@ public class Game
                 actionEffectuee = true;
                 break;
             default:
-                result = "Action inconnue.\n";
+                result = "Unknown action.\n";
                 break;
         }
         if (actionEffectuee)
@@ -228,13 +285,13 @@ public class Game
             if (monsterOnPlayer != null && monsterOnPlayer.Health > 0)
             {
                 Arena.Player.Health -= monsterOnPlayer.Attack;
-                result += $"Un monstre vous attaque automatiquement (-{monsterOnPlayer.Attack} PV) !\n";
+                result += $"A monster automatically attacks you (-{monsterOnPlayer.Attack} HP) !\n";
             }
             if (Arena.Player.Health <= 0)
             {
                 InProgress = false;
-                result += $"\nVous êtes mort ! Monstres tués : {MonstersKilled} | Distance parcourue : {DistanceTraveled}\n";
-                // Sauvegarde automatique à la mort du joueur
+                result += $"\nYou are dead ! Monsters killed : {MonstersKilled} | Distance traveled : {DistanceTraveled}\n";
+                // Automatic save on player death
                 if (!string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password))
                 {
                     _ = Game.SaveEncryptedAsync(this, username, password, currentAccount, allAccounts);
@@ -244,6 +301,9 @@ public class Game
         return result;
     }
 
+    /// <summary>
+    /// Moves the player in the given direction.
+    /// </summary>
     private (string, bool) MovePlayer(string direction)
     {
         int x = Arena.Player.X;
@@ -256,55 +316,64 @@ public class Game
             case "droite": x++; break;
         }
         if (x < 0 || x >= Arena.Width || y < 0 || y >= Arena.Height)
-            return ("Impossible de sortir de l'arène !\n", false);
+            return ("Cannot leave the arena !\n", false);
         Arena.Player.X = x;
         Arena.Player.Y = y;
         Arena.Explored[x, y] = true;
-        DistanceTraveled++; // incrémente à chaque déplacement valide
-        string msg = $"Vous vous déplacez vers ({x},{y}). Distance parcourue : {DistanceTraveled}\n";
+        DistanceTraveled++; // increments with each valid move
+        string msg = $"You move to ({x},{y}). Distance traveled : {DistanceTraveled}\n";
         if (Arena.IsItemAt(x, y))
-            msg += "Il y a quelque chose ici...\n";
+            msg += "There is something here...\n";
         return (msg, true);
     }
 
+    /// <summary>
+    /// Initiates combat with a monster.
+    /// </summary>
     private string FightMonster()
     {
         var monster = Arena.GetMonsterAt(Arena.Player.X, Arena.Player.Y);
         if (monster == null)
-            return "Aucun monstre ici.\n";
+            return "No monster here.\n";
         monster.Health -= Arena.Player.Attack;
         if (monster.Health > 0)
         {
             Arena.Player.Health -= monster.Attack;
-            return $"Vous blessez le monstre ! Il riposte (-{monster.Attack} PV).\n";
+            return $"You injure the monster ! It retaliates (-{monster.Attack} HP).\n";
         }
         else
         {
             MonstersKilled++;
-            return "Monstre vaincu !\n";
+            return "Monster defeated !\n";
         }
     }
 
+    /// <summary>
+    /// Picks up an item from the arena.
+    /// </summary>
     private string PickupItem()
     {
         var item = Arena.GetItemAt(Arena.Player.X, Arena.Player.Y);
         if (item == null)
-            return "Aucun objet ici.\n";
+            return "No item here.\n";
         item.PickedUp = true;
         Arena.Player.Inventory.Add(item);
         switch (item.Type)
         {
             case ItemType.Potion:
-                Arena.Player.Health += 10; // Potion plus efficace
-                return "Vous ramassez une potion (+10 PV).\n";
+                Arena.Player.Health += 10; // More effective potion
+                return "You pick up a potion (+10 HP).\n";
             case ItemType.Treasure:
                 MonstersKilled++;
-                return "Vous ramassez un trésor (+1 monstre tué fictif).\n";
+                return "You pick up a treasure (+1 fictitious monster killed).\n";
             default:
-                return "Objet ramassé.\n";
+                return "Item picked up.\n";
         }
     }
 
+    /// <summary>
+    /// Saves the game state encrypted to the server and locally.
+    /// </summary>
     public static async Task SaveEncryptedAsync(Game game, string username, string password, Account? currentAccount = null, List<Account>? allAccounts = null)
     {
         string json = JsonSerializer.Serialize(game);
@@ -325,10 +394,10 @@ public class Game
             Data = Convert.ToBase64String(ciphertext)
         };
         await ApiClient.SaveGameAsync(save);
-        // Sauvegarde locale
+        // Local save
         if (currentAccount != null)
         {
-            // Sauvegarde sur le serveur
+            // Save on server
             currentAccount.MonstersKilled = game.MonstersKilled;
             currentAccount.DistanceTraveled = game.DistanceTraveled;
             currentAccount.MonstersKilledDateUtc = DateTime.UtcNow;
@@ -339,6 +408,9 @@ public class Game
         }
     }
 
+    /// <summary>
+    /// Loads a game state from encrypted data.
+    /// </summary>
     public static async Task<Game> LoadEncryptedAsync(string username, string password)
     {
         var save = await ApiClient.LoadGameAsync(username, password);
@@ -365,6 +437,9 @@ public class Game
         }
     }
 
+    /// <summary>
+    /// Saves the game and account data locally.
+    /// </summary>
     public static void SaveLocal(Game game, Account account, string filePath)
     {
         string savesDirectory = Path.Combine(AppContext.BaseDirectory, "Saves");
@@ -381,19 +456,22 @@ public class Game
         File.WriteAllText(fullPath, json);
     }
 
+    /// <summary>
+    /// Synchronizes local save data with the server if valid.
+    /// </summary>
     public static async Task SyncLocalIfValid(string filePath)
     {
         if (!File.Exists(filePath)) return;
         var json = File.ReadAllText(filePath);
         var data = JsonSerializer.Deserialize<LocalSaveData>(json);
         if (data == null) return;
-        // Vérifie la signature
+        // Check the signature
         if (Account.VerifyMonstersKilledSignature(
             data.Account.MonstersKilled,
             data.Account.MonstersKilledSignature,
             Account.GetServerSecretKey()))
         {
-            // Envoie au serveur
+            // Send to server
             var serverAccount = await ApiClient.GetAccountAsync(data.Account.Username);
             if (serverAccount != null &&
                 data.Account.MonstersKilled > serverAccount.MonstersKilled &&
