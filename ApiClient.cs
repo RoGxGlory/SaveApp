@@ -133,9 +133,9 @@ public static class ApiClient
     /// <summary>
     /// Registers a new user account.
     /// </summary>
-    public static async Task<RegisterResult> RegisterAsync(string username, string password)
+    public static async Task<RegisterResult> RegisterAsync(string username, string password, string email)
     {
-        var payload = new { Username = username, Password = password };
+        var payload = new { Username = username, Password = password, Email = email };
         var response = await HttpClient.PostAsJsonAsync($"{ApiBaseUrl}/account/register", payload);
         if (!response.IsSuccessStatusCode)
         {

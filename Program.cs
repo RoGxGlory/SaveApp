@@ -1,5 +1,7 @@
 ﻿// Main program for the console game with multi-account management, encrypted save, and interactive menu
 
+using System.Text.RegularExpressions;
+
 namespace SaveApp;
 
 /// <summary>
@@ -76,10 +78,17 @@ class Program
                 Console.Write("Do you want to log in with (1) username or (2) email? ");
                 string choixLogin = Console.ReadLine();
                 bool isEmail = false;
+                // Lors du login, renseigner username ou email
                 if (choixLogin == "2")
                 {
-                    Console.Write("Enter your email: ");
-                    identifier = Console.ReadLine() ?? "";
+                    Console.Write("Enter your email : ");
+                    string email = Console.ReadLine() ?? "";
+                    while (!IsValidEmail(email))
+                    {
+                        Console.Write("Invalid email. Try again : ");
+                        email = Console.ReadLine() ?? "";
+                    }
+                    identifier = email;
                     isEmail = true;
                 }
                 else
@@ -102,9 +111,29 @@ class Program
                 {
                     Console.WriteLine("No account found. Do you want to create one? (y/n)");
                     string rep = Console.ReadLine()?.ToLower() ?? "n";
+                    // Lors de la création d'un compte, demander username et email
                     if (rep == "o" || rep == "oui" || rep == "y")
                     {
-                        var registerResult = await ApiClient.RegisterAsync(identifier, password);
+                        string newUsername = "";
+                        string newEmail = "";
+                        if (isEmail)
+                        {
+                            Console.Write("Choose a username : ");
+                            newUsername = Console.ReadLine() ?? "";
+                            newEmail = identifier;
+                        }
+                        else
+                        {
+                            newUsername = identifier;
+                            Console.Write("Enter your email : ");
+                            newEmail = Console.ReadLine() ?? "";
+                            while (!IsValidEmail(newEmail))
+                            {
+                                Console.Write("Invalid email. Try again : ");
+                                newEmail = Console.ReadLine() ?? "";
+                            }
+                        }
+                        var registerResult = await ApiClient.RegisterAsync(newUsername, userPassword, newEmail);
                         if (registerResult.Success)
                         {
                             currentAccount = registerResult.Account;
@@ -237,5 +266,14 @@ class Program
         }
         Console.WriteLine();
         return pwd.ToString();
+    }
+
+    /// <summary>
+    /// Validates the email format using a regular expression.
+    /// </summary>
+    static bool IsValidEmail(string email)
+    {
+        // Simple regex for email validation
+        return Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
     }
 }
