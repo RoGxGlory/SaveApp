@@ -116,6 +116,7 @@ class Program
                     {
                         string newUsername = "";
                         string newEmail = "";
+                        string newPassword = "";
                         if (isEmail)
                         {
                             Console.Write("Choose a username : ");
@@ -133,11 +134,13 @@ class Program
                                 newEmail = Console.ReadLine() ?? "";
                             }
                         }
-                        var registerResult = await ApiClient.RegisterAsync(newUsername, userPassword, newEmail);
+                        Console.Write("Choose a password : ");
+                        newPassword = ReadPassword();
+                        var registerResult = await ApiClient.RegisterAsync(newUsername, newPassword, newEmail);
                         if (registerResult.Success)
                         {
                             currentAccount = registerResult.Account;
-                            userPassword = password;
+                            userPassword = newPassword;
                             Console.WriteLine("Account created and logged in!\n");
                             break;
                         }
