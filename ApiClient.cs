@@ -116,9 +116,11 @@ public static class ApiClient
     /// </summary>
     public static async Task<LoginResult> LoginAsync(string identifier, string password, bool isEmail = false)
     {
-        var payload = isEmail
-            ? new { Email = identifier, Password = password }
-            : new { Username = identifier, Password = password };
+        LoginPayload payload;
+        if (isEmail)
+            payload = new LoginPayload { Email = identifier, Password = password };
+        else
+            payload = new LoginPayload { Username = identifier, Password = password };
         var response = await HttpClient.PostAsJsonAsync($"{ApiBaseUrl}/account/login", payload);
         if (!response.IsSuccessStatusCode)
         {
@@ -200,4 +202,11 @@ public class RegisterResult
 {
     public bool Success { get; set; }
     public Account? Account { get; set; }
+}
+
+public class LoginPayload
+{
+    public string? Username { get; set; }
+    public string? Email { get; set; }
+    public string Password { get; set; } = string.Empty;
 }

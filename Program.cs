@@ -8,6 +8,8 @@ namespace SaveApp;
 /// </summary>
 class Program
 {
+    static string username = ""; // Ajout de la variable username globale pour la session
+
     /// <summary>
     /// Displays the main menu options to the user.
     /// </summary>
@@ -83,7 +85,8 @@ class Program
                 else
                 {
                     Console.Write("Enter your username: ");
-                    identifier = Console.ReadLine() ?? "Guest";
+                    username = Console.ReadLine() ?? "";
+                    identifier = username;
                 }
                 Console.Write("Password: ");
                 string password = ReadPassword();
