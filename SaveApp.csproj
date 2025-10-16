@@ -8,7 +8,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MongoDB.Driver" Version="3.5.0" />
+    <ProjectReference Include="..\SaveApp.Core\SaveApp.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Account.cs" />
+    <Compile Remove="ApiClient.cs" />
+    <Compile Remove="Game.cs" />
+    <Compile Remove="PasswordService.cs" />
   </ItemGroup>
 
 </Project>

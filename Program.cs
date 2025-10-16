@@ -1,7 +1,8 @@
-﻿// Main program for the console game with multi-account management, encrypted save, and interactive menu
+﻿
+// Main program for the console game with multi-account management, encrypted save, and interactive menu
 
 using System.Text.RegularExpressions;
-
+//using SaveApp.Core;
 namespace SaveApp;
 
 /// <summary>
@@ -45,6 +46,8 @@ class Program
     /// <summary>
     /// Displays the leaderboard with player statistics.
     /// </summary>
+
+    /*
     static async Task ShowLeaderboardAsync()
     {
         var accounts = ApiClient.SortLeaderboard(await ApiClient.GetLeaderboardAsync());
@@ -62,7 +65,7 @@ class Program
         Console.WriteLine(new string('=', 83));
         Console.WriteLine();
     }
-    
+
     /// <summary>
     /// Main entry point and game loop. Handles authentication, game session, and menu navigation.
     /// </summary>
@@ -280,4 +283,6 @@ class Program
         // Simple regex for email validation
         return Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
     }
+    */
 }
+
