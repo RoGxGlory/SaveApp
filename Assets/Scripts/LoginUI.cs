@@ -34,6 +34,21 @@ public class LoginUI : MonoBehaviour
         registerPanelAnimator = registerPanel.GetComponent<Animator>();
         mainMenuPanelAnimator = mainMenuPanel.GetComponent<Animator>();
         leaderboardPanelAnimator = leaderboardPanel.GetComponent<Animator>();
+        
+        // Ensure password fields are masked
+        if (passwordLoginField != null)
+        {
+            passwordLoginField.contentType = TMP_InputField.ContentType.Password;
+            passwordLoginField.asteriskChar = '*';
+            passwordLoginField.ForceLabelUpdate();
+        }
+
+        if (passwordField != null)
+        {
+            passwordField.contentType = TMP_InputField.ContentType.Password;
+            passwordField.asteriskChar = '*';
+            passwordField.ForceLabelUpdate();
+        }
     }
 
     public async void OnLoginButton()
@@ -132,9 +147,18 @@ public class LoginUI : MonoBehaviour
     
     public async void OnLeaderboardButton()
     {
-        panelManager.CloseCurrent();
-        panelManager.OpenPanel(leaderboardPanelAnimator);
+        panelManager.CloseCurrent(true);
         await leaderboardManager.FetchAndDisplayLeaderboard();
+        panelManager.OpenPanel(leaderboardPanelAnimator, true);
+    }
+    
+    public void ReturnToGamePanelInstant()
+    {
+        if (panelManager == null || gamePanelAnimator == null)
+            return;
+
+        panelManager.CloseCurrent(true);
+        panelManager.OpenPanel(gamePanelAnimator, true);
     }
     
     private System.Collections.IEnumerator PlayRegisterAnimationAndSwitchPanel()

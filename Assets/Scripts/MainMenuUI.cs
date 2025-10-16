@@ -13,8 +13,8 @@ public class MainMenuUI : MonoBehaviour
         // ArenaDisplay reads from GameSessionManager, no need to assign the game directly
         if (panelManager != null && gamePanelAnimator != null)
         {
-            panelManager.CloseCurrent();
-            panelManager.OpenPanel(gamePanelAnimator);
+            panelManager.CloseCurrent(true);
+            panelManager.OpenPanel(gamePanelAnimator, true);
         }
     }
 
