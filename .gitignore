@@ -33,6 +33,10 @@ x86/
 bld/
 [Bb]in/
 [Ll]og/
+[Oo]bj/
+[Ll]ogs/
+[Tt]emp/
+[Ll]ibrary/
 
 # Visual Studio 2015/2017 cache/options directory
 .vs/
