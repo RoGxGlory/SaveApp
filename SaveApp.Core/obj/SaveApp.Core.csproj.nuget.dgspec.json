@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "F:\\Dev\\My Projects\\GTech\\SaveApp\\SaveApp.Core\\SaveApp.Core.csproj": {}
+    "F:\\Dev\\My Projects\\GTech\\VaultOfShadows\\SaveApp.Core\\SaveApp.Core.csproj": {}
   },
   "projects": {
-    "F:\\Dev\\My Projects\\GTech\\SaveApp\\SaveApp.Core\\SaveApp.Core.csproj": {
+    "F:\\Dev\\My Projects\\GTech\\VaultOfShadows\\SaveApp.Core\\SaveApp.Core.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "F:\\Dev\\My Projects\\GTech\\SaveApp\\SaveApp.Core\\SaveApp.Core.csproj",
+        "projectUniqueName": "F:\\Dev\\My Projects\\GTech\\VaultOfShadows\\SaveApp.Core\\SaveApp.Core.csproj",
         "projectName": "SaveApp.Core",
-        "projectPath": "F:\\Dev\\My Projects\\GTech\\SaveApp\\SaveApp.Core\\SaveApp.Core.csproj",
+        "projectPath": "F:\\Dev\\My Projects\\GTech\\VaultOfShadows\\SaveApp.Core\\SaveApp.Core.csproj",
         "packagesPath": "C:\\Users\\benab\\.nuget\\packages\\",
-        "outputPath": "F:\\Dev\\My Projects\\GTech\\SaveApp\\SaveApp.Core\\obj\\",
+        "outputPath": "F:\\Dev\\My Projects\\GTech\\VaultOfShadows\\SaveApp.Core\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\benab\\AppData\\Roaming\\NuGet\\NuGet.Config",

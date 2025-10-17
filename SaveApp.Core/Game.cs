@@ -17,16 +17,19 @@ public class SaveData
     [JsonProperty("salt")]
     public string Salt { get; set; } = string.Empty;
     [JsonProperty("iv")]
-    public string IV { get; set; } = string.Empty; // Changed from Nonce/Tag to IV
+    public string IV { get; set; } = string.Empty; // Initialization Vector for AES
     [JsonProperty("data")]
-    public string Data { get; set; } = string.Empty;
+    public string Data { get; set; } = string.Empty; // Encrypted game data
 }
 
+/// <summary>
+/// Represents a door in the arena, allowing transition to another room.
+/// </summary>
 public class Door
 {
-    public int X { get; set; }
-    public int Y { get; set; }
-    public string TargetRoomId { get; set; }
+    public int X { get; set; } // X position of the door
+    public int Y { get; set; } // Y position of the door
+    public string TargetRoomId { get; set; } // ID of the room this door leads to
 
     public Door(int x, int y, string targetRoomId)
     {
@@ -37,23 +40,23 @@ public class Door
 }
 
 /// <summary>
-/// Represents the game arena, including player, monsters, items, and exploration state.
+/// Represents the game arena, including player, monsters, items, doors, and exploration state.
 /// </summary>
 public class Arena
 {
-    public int Width { get; set; }
-    public int Height { get; set; }
-    public Adventurer Player { get; set; }
-    public List<Monster> Monsters { get; set; }
-    public List<Item> Items { get; set; }
+    public int Width { get; set; } // Arena width
+    public int Height { get; set; } // Arena height
+    public Adventurer Player { get; set; } // Player character
+    public List<Monster> Monsters { get; set; } // List of monsters in the arena
+    public List<Item> Items { get; set; } // List of items in the arena
     [JsonIgnore]
-    public bool[,] Explored { get; set; }
-    public string RoomId { get; set; }
-    private static Random _rng = new Random();
-    public Door RoomDoor { get; set; }
+    public bool[,] Explored { get; set; } // Tracks explored tiles
+    public string RoomId { get; set; } // Unique room identifier
+    public Door RoomDoor { get; set; } // Door to another room
+    private static Random _rng = new Random(); // Random number generator
 
     /// <summary>
-    /// Initializes a new arena with monsters and items.
+    /// Initializes a new arena with monsters, items, and a door.
     /// </summary>
     public Arena(int width, int height, string id = null, string targetRoomId = null)
     {
@@ -66,42 +69,32 @@ public class Arena
         Items = new List<Item>();
         GenerateMonsters();
         GenerateItems();
-        SpawnDoor(targetRoomId ?? Guid.NewGuid().ToString());
+        SpawnDoor(targetRoomId ?? Guid.NewGuid().ToString()); // Spawn a door on the border
     }
     
+    /// <summary>
+    /// Spawns a door randomly on one of the arena borders (wall), using wall coordinates for visual and logic.
+    /// </summary>
     private void SpawnDoor(string targetRoomId)
     {
-        int border = Arena._rng.Next(4);
+        int border = _rng.Next(4); // 0: left, 1: right, 2: top, 3: bottom
         int x = 0, y = 0;
         switch (border)
         {
-            case 0: // Top wall
-                x = Arena._rng.Next(this.Width);
-                y = -1;
-                break;
-            case 1: // Bottom wall
-                x = Arena._rng.Next(this.Width);
-                y = this.Height;
-                break;
-            case 2: // Left wall
-                x = -1;
-                y = Arena._rng.Next(this.Height);
-                break;
-            case 3: // Right wall
-                x = this.Width;
-                y = Arena._rng.Next(this.Height);
-                break;
+            case 0: x = -1; y = _rng.Next(Height); break; // left wall
+            case 1: x = Width; y = _rng.Next(Height); break; // right wall
+            case 2: x = _rng.Next(Width); y = -1; break; // top wall
+            case 3: x = _rng.Next(Width); y = Height; break; // bottom wall
         }
-        this.RoomDoor = new Door(x, y, targetRoomId);
+        RoomDoor = new Door(x, y, targetRoomId); // Door is now on the wall
     }
-
 
     /// <summary>
     /// Randomly generates monsters in the arena.
     /// </summary>
     private void GenerateMonsters()
     {
-        int count = _rng.Next(3, 7);
+        int count = _rng.Next(3, 7); // Random number of monsters
         for (int i = 0; i < count; i++)
         {
             Monsters.Add(new Monster
@@ -109,7 +102,7 @@ public class Arena
                 X = _rng.Next(Width),
                 Y = _rng.Next(Height),
                 Health = _rng.Next(5, 15),
-                Attack = _rng.Next(1, 4) // Reduced attack
+                Attack = _rng.Next(1, 4)
             });
         }
     }
@@ -119,7 +112,7 @@ public class Arena
     /// </summary>
     private void GenerateItems()
     {
-        int count = _rng.Next(3, 7);
+        int count = _rng.Next(3, 7); // Random number of items
         for (int i = 0; i < count; i++)
         {
             Items.Add(new Item
@@ -149,7 +142,7 @@ public class Arena
     public Item? GetItemAt(int x, int y) => Items.FirstOrDefault(i => i.X == x && i.Y == y && !i.PickedUp);
 
     /// <summary>
-    /// Moves monsters towards the player.
+    /// Moves all monsters towards the player if possible.
     /// </summary>
     public void MoveMonsters()
     {
@@ -159,6 +152,7 @@ public class Arena
             int dy = Player.Y - monster.Y;
             int newX = monster.X;
             int newY = monster.Y;
+            // Move horizontally or vertically towards the player
             if (Math.Abs(dx) > Math.Abs(dy))
             {
                 if (dx > 0) newX++;
@@ -169,6 +163,7 @@ public class Arena
                 if (dy > 0) newY++;
                 else if (dy < 0) newY--;
             }
+            // Only move if the new position is valid and not occupied
             if (newX >= 0 && newX < Width && newY >= 0 && newY < Height && !Monsters.Any(m => m != monster && m.X == newX && m.Y == newY && m.Health > 0))
             {
                 monster.X = newX;
@@ -178,19 +173,18 @@ public class Arena
     }
 
     /// <summary>
-    /// Gets a visual representation of the arena.
+    /// Returns a string visual representation of the arena, including walls, player, monsters, items, and door.
     /// </summary>
     public string GetVisual()
     {
         var sb = new StringBuilder();
-
         // Top border
         for (int x = 0; x < this.Width + 2; x++)
         {
             if (this.RoomDoor != null && this.RoomDoor.Y == -1 && this.RoomDoor.X + 1 == x)
-                sb.Append('D');
+                sb.Append('D'); // Door
             else
-                sb.Append('#');
+                sb.Append('#'); // Top wall
         }
         sb.AppendLine();
 
@@ -199,41 +193,44 @@ public class Arena
         {
             // Left border
             if (this.RoomDoor != null && this.RoomDoor.X == -1 && this.RoomDoor.Y == y)
-                sb.Append('D');
+                sb.Append('D'); // Door
             else
-                sb.Append('#');
+                sb.Append('#'); // Left wall
 
             // Arena content
             for (int x = 0; x < this.Width; x++)
             {
                 if (this.Player.X == x && this.Player.Y == y)
-                    sb.Append('@');
+                    sb.Append('@'); // Player
                 else if (this.Monsters.Any(m => m.X == x && m.Y == y && m.Health > 0))
-                    sb.Append('M');
+                    sb.Append('M'); // Monster
                 else if (this.Items.Any(i => i.X == x && i.Y == y && !i.PickedUp))
-                    sb.Append('?');
+                    sb.Append('?'); // Item
                 else
-                    sb.Append('.');
+                    sb.Append('.'); // Empty space
             }
+
 
             // Right border
             if (this.RoomDoor != null && this.RoomDoor.X == this.Width && this.RoomDoor.Y == y)
-                sb.Append('D');
+                sb.Append('D'); // Door
             else
-                sb.Append('#');
+                sb.Append('#'); // Right wall
 
             sb.AppendLine();
+
         }
 
         // Bottom border
         for (int x = 0; x < this.Width + 2; x++)
         {
             if (this.RoomDoor != null && this.RoomDoor.Y == this.Height && this.RoomDoor.X + 1 == x)
-                sb.Append('D');
+                sb.Append('D'); // Door
             else
-                sb.Append('#');
+                sb.Append('#'); // Bottom wall
         }
         sb.AppendLine();
+
 
         return sb.ToString();
     }
@@ -244,11 +241,11 @@ public class Arena
 /// </summary>
 public class Adventurer
 {
-    public int X { get; set; }
-    public int Y { get; set; }
-    public int Health { get; set; } = 40; // Increased HP
-    public int Attack { get; set; } = 3;
-    public List<Item> Inventory { get; set; } = new();
+    public int X { get; set; } // Player X position
+    public int Y { get; set; } // Player Y position
+    public int Health { get; set; } = 40; // Player HP
+    public int Attack { get; set; } = 3; // Player attack value
+    public List<Item> Inventory { get; set; } = new(); // Player inventory
 }
 
 /// <summary>
@@ -256,10 +253,10 @@ public class Adventurer
 /// </summary>
 public class Monster
 {
-    public int X { get; set; }
-    public int Y { get; set; }
-    public int Health { get; set; }
-    public int Attack { get; set; }
+    public int X { get; set; } // Monster X position
+    public int Y { get; set; } // Monster Y position
+    public int Health { get; set; } // Monster HP
+    public int Attack { get; set; } // Monster attack value
 }
 
 /// <summary>
@@ -267,8 +264,8 @@ public class Monster
 /// </summary>
 public enum ItemType
 {
-    Potion,
-    Treasure
+    Potion,    // Heals the player
+    Treasure   // Increases score
 }
 
 /// <summary>
@@ -276,10 +273,10 @@ public enum ItemType
 /// </summary>
 public class Item
 {
-    public int X { get; set; }
-    public int Y { get; set; }
-    public ItemType Type { get; set; }
-    public bool PickedUp { get; set; } = false;
+    public int X { get; set; } // Item X position
+    public int Y { get; set; } // Item Y position
+    public ItemType Type { get; set; } // Type of item
+    public bool PickedUp { get; set; } = false; // Whether the item has been picked up
 }
 
 /// <summary>
@@ -287,14 +284,14 @@ public class Item
 /// </summary>
 public class Game
 {
-    private const int DefaultWidth = 24;
-    private const int DefaultHeight = 8;
-    public Arena Arena { get; set; }
-    public bool InProgress { get; set; }
-    public int Turn { get; set; }
-    public int MonstersKilled { get; set; }
-    public int DistanceTraveled { get; set; }
-    private static Random _rng = new Random();
+    private const int DefaultWidth = 24; // Default arena width
+    private const int DefaultHeight = 8; // Default arena height
+    public Arena Arena { get; set; } // Current arena
+    public bool InProgress { get; set; } // Is the game in progress?
+    public int Turn { get; set; } // Current turn number
+    public int MonstersKilled { get; set; } // Total monsters killed
+    public int DistanceTraveled { get; set; } // Total distance traveled
+    private static Random _rng = new Random(); // Random number generator
 
     /// <summary>
     /// Initializes a new game instance.
@@ -384,18 +381,10 @@ public class Game
         int y = this.Arena.Player.Y;
         switch (direction.ToLower())
         {
-            case "up":
-                --y;
-                break;
-            case "down":
-                ++y;
-                break;
-            case "left":
-                --x;
-                break;
-            case "right":
-                ++x;
-                break;
+            case "up": y--; break;
+            case "down": y++; break;
+            case "left": x--; break;
+            case "right": x++; break;
         }
         if (this.Arena.RoomDoor != null && x == this.Arena.RoomDoor.X && y == this.Arena.RoomDoor.Y)
         {
@@ -409,9 +398,10 @@ public class Game
             this.Arena.Player.Health = oldPlayer.Health;
             this.Arena.Player.Attack = oldPlayer.Attack;
             this.Arena.Player.Inventory = oldPlayer.Inventory;
-      
+
             return ($"You go through the door to room {this.Arena.RoomId}!\n", true);
         }
+        // Prevent leaving the arena
         if (x < 0 || x >= this.Arena.Width || y < 0 || y >= this.Arena.Height)
             return ("Cannot leave the arena!\n", false);
         this.Arena.Player.X = x;
@@ -458,7 +448,7 @@ public class Game
         switch (item.Type)
         {
             case ItemType.Potion:
-                Arena.Player.Health += 10; // More effective potion
+                Arena.Player.Health += 10; // Potion heals player
                 return "You pick up a potion (+10 HP).\n";
             case ItemType.Treasure:
                 MonstersKilled++;
@@ -473,7 +463,7 @@ public class Game
     /// </summary>
     public static async Task SaveEncryptedAsync(Game game, string username, string password, Account? currentAccount = null, List<Account>? allAccounts = null)
     {
-        string json = JsonConvert.SerializeObject(game);
+        string json = JsonConvert.SerializeObject(game); // Serialize game state
         byte[] plaintext = Encoding.UTF8.GetBytes(json);
 
         // Generate salt (16 bytes)
@@ -502,8 +492,7 @@ public class Game
             IV = Convert.ToBase64String(iv),
             Data = Convert.ToBase64String(ciphertext)
         };
-        // Console.WriteLine($"DEBUG: SaveData before API call: Username={save.Username}, Salt={save.Salt}, Nonce={save.Nonce}, Tag={save.Tag}, DataLength={save.Data.Length}");
-        await ApiClient.SaveGameAsync(save);
+        await ApiClient.SaveGameAsync(save); // Save to server
         // Local/account sync
         if (currentAccount != null)
         {
@@ -610,3 +599,4 @@ public class Game
         public Account Account { get; set; } = new Account();
     }
 }
+
