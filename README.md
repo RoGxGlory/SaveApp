@@ -76,6 +76,7 @@ VaultOfShadows/
 - When switching panels, use instant switch functions for best UX.
 - HP and stats persist between rooms; leaderboard only updates after save.
 - Dockerfile is optional and not required for Unity development.
+- When experimenting with API requests, the backend may go to sleep after inactivity and needs time to wake up on the first request. If a request seems delayed or times out briefly, wait a moment and try again — the request will be processed once the service wakes.
 
 ---
 _Last updated: 2025-10-17_
