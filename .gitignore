@@ -32,19 +32,7 @@ x86/
 [Aa][Rr][Mm]64/
 bld/
 [Bb]in/
-[Oo]bj/
 [Ll]og/
-[Ll]ogs/
-[Ll]ibrary/
-[Tt]emp/
-
-VaultOfShadows/[Ll]ibrary/
-VaultOfShadows/[Tt]emp/
-VaultOfShadows/[Oo]bj/
-VaultOfShadows/[Bb]uild/
-VaultOfShadows/[Bb]uilds/
-VaultOfShadows/[Ll]ogs/
-VaultOfShadows/[Uu]ser[Ss]ettings/
 
 # Visual Studio 2015/2017 cache/options directory
 .vs/
